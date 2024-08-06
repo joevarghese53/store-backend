@@ -10,7 +10,7 @@ const bucket = storage.bucket(bucketName);
 const addProduct = asyncHandler(async (req, res) => {
   try {
     const { name, description, price, category, brand, offers, returnpolicy } = req.fields;
-
+    console.log(req.fields);
     // Validation
     switch (true) {
       case !name:
