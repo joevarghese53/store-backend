@@ -33,7 +33,7 @@ const addProduct = asyncHandler(async (req, res) => {
     await product.save();
     res.json(product);
   } catch (error) {
-    console.error(error);
+    console.log(error);
     res.status(400).json(error.message);
   }
 });
