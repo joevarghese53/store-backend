@@ -24,10 +24,10 @@ connectDB();
 const app = express();
 const allowedOrigins = [
     'http://localhost:3000',
+    'https://store-frontend-41hipis43-joevarghese53s-projects.vercel.app', 
+    'https://store-frontend-git-main-joevarghese53s-projects.vercel.app',
     'https://store-frontend-joevarghese53s-projects.vercel.app',
-    'https://store-frontend-cyan.vercel.app',
-    'https://store-frontend-m1i4kljua-joevarghese53s-projects.vercel.app',
-    'https://store-frontend-bx6t.onrender.com'
+    'https://store-frontend-taupe.vercel.app'
   ];
 
 app.use(cors({ origin: allowedOrigins, credentials: true }));
