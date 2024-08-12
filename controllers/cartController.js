@@ -12,6 +12,9 @@ const getCart = asyncHandler(async (req, res) => {
 
 const addToCart = asyncHandler(async (req, res) => {
   const { productId, quantity } = req.body;
+  if (!productId || !quantity) {
+    return res.status(400).json({ message: 'Product ID and quantity are required.' });
+  }
   console.log(`Adding productId: ${productId}, quantity: ${quantity}`);
 
   let cart = await Cart.findOne({ userId: req.user._id });
