@@ -8,11 +8,13 @@ const generateToken = (res, userId) => {
 
   res.cookie('jwt', token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production', // Ensure secure cookies in production
-    sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax', // Use None for cross-origin in production
-    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+    path: '/', // Ensure the cookie is available throughout the site
 });
 
+console.log('Cookie set:', res.getHeader('Set-Cookie')); // Log the cookie header
 
   return token;
 };
