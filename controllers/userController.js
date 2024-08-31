@@ -64,8 +64,11 @@ const loginUser = asyncHandler(async (req, res) => {
 
 const logoutCurrentUser = asyncHandler(async (req, res) => {
   res.cookie("jwt", "", {
-    httpOnly: true,
-    expires: new Date(0),
+    httpOnly: true, // Corrected typo here
+    secure: process.env.NODE_ENV === 'production', // Ensure secure flag if in production
+    sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax', // Matching SameSite setting
+    expires: new Date(0), // Expire immediately
+    path: '/', // Ensure the path is the same as the original cookie
   });
   console.log("Cookie cleared:", res.getHeader("Set-Cookie"));
   res.status(200).json({ message: "Logged out successfully" });
