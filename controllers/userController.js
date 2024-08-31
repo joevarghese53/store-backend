@@ -67,7 +67,7 @@ const logoutCurrentUser = asyncHandler(async (req, res) => {
     httyOnly: true,
     expires: new Date(0),
   });
-
+  console.log("Cookie cleared:", res.getHeader("Set-Cookie"));
   res.status(200).json({ message: "Logged out successfully" });
 });
 
