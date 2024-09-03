@@ -218,7 +218,7 @@ const filterProducts = asyncHandler(async (req, res) => {
     if (checked.length > 0) args.category = checked;
     if (radio.length) args.price = { $gte: radio[0], $lte: radio[1] };
 
-    const products = await Product.find(args);
+    const products = await Product.find(args).populate("category");
     res.json(products);
   } catch (error) {
     console.error(error);
