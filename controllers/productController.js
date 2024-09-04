@@ -191,8 +191,8 @@ const addProductReview = asyncHandler(async (req, res) => {
 const fetchTopProducts = asyncHandler(async (req, res) => {
   try {
     const products = await Product.find({}).sort({ rating: -1 })
-    .populate("category")
-    .limit(4);
+      .populate("category")
+      .limit(4);
     res.json(products);
   } catch (error) {
     console.error(error);
@@ -212,11 +212,18 @@ const fetchNewProducts = asyncHandler(async (req, res) => {
 
 const filterProducts = asyncHandler(async (req, res) => {
   try {
-    const { checked, radio } = req.body;
-
+    const { checked, radio } = req.body; // `radio` will hold the selected price range
     let args = {};
-    if (checked.length > 0) args.category = checked;
-    if (radio.length) args.price = { $gte: radio[0], $lte: radio[1] };
+
+    // Filter by category
+    if (checked.length > 0) {
+      args.category = { $in: checked }; // Ensure this handles multiple categories
+    }
+
+    // Filter by price range
+    if (radio?.length === 2) {
+      args.price = { $gte: radio[0], $lte: radio[1] }; // Apply the price range filter
+    }
 
     const products = await Product.find(args).populate("category");
     res.json(products);
@@ -225,6 +232,7 @@ const filterProducts = asyncHandler(async (req, res) => {
     res.status(500).json({ error: "Server Error" });
   }
 });
+
 
 export {
   addProduct,
