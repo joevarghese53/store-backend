@@ -147,32 +147,6 @@ const fetchAllProducts = asyncHandler(async (req, res) => {
   }
 });
 
-const fetchMaleProducts = asyncHandler(async (req, res) => {
-  try {
-    const products = await Product.find({ gender: "male" })
-      .populate("category")
-      .sort({ createAt: -1 });
-
-    res.json(products);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Server Error" });
-  }
-});
-
-const fetchFemaleProducts = asyncHandler(async (req, res) => {
-  try {
-    const products = await Product.find({ gender: "female" })
-      .populate("category")
-      .sort({ createAt: -1 });
-
-    res.json(products);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Server Error" });
-  }
-});
-
 const addProductReview = asyncHandler(async (req, res) => {
   try {
     const { rating, comment } = req.body;
@@ -217,7 +191,12 @@ const addProductReview = asyncHandler(async (req, res) => {
 
 const fetchTopProducts = asyncHandler(async (req, res) => {
   try {
-    const products = await Product.find({}).sort({ rating: -1 })
+    const { gender } = req.query;
+    let query = {};
+    if (gender) {
+      query.gender = gender; 
+    }
+    const products = await Product.find(query).sort({ rating: -1 })
       .populate("category")
       .limit(4);
     res.json(products);
@@ -239,8 +218,13 @@ const fetchNewProducts = asyncHandler(async (req, res) => {
 
 const filterProducts = asyncHandler(async (req, res) => {
   try {
-    const { checked, radio } = req.body; // `radio` will hold the selected price range
+    const { checked, radio, gender } = req.body; // Accept gender from the request body
     let args = {};
+
+    // Filter by gender
+    if (gender) {
+      args.gender = gender; // Add gender filter based on request
+    }
 
     // Filter by category
     if (checked.length > 0) {
@@ -261,6 +245,7 @@ const filterProducts = asyncHandler(async (req, res) => {
 });
 
 
+
 export {
   addProduct,
   updateProductDetails,
@@ -268,8 +253,6 @@ export {
   fetchProducts,
   fetchProductById,
   fetchAllProducts,
-  fetchMaleProducts,
-  fetchFemaleProducts,
   addProductReview,
   fetchTopProducts,
   fetchNewProducts,
