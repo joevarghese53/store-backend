@@ -20,7 +20,11 @@ const productSchema = mongoose.Schema(
   {
     name: { type: String, required: true },
     image: { type: String, required: true },
-    brand: { type: String, required: true },
+    gender: { 
+      type: String, 
+      required: true, 
+      enum: ['male', 'female'], // Restrict values to 'male' or 'female'
+    },
     category: { type: ObjectId, ref: "Category", required: true },
     description: { type: String, required: true },
     reviews: [reviewSchema],
