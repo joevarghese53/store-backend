@@ -1,3 +1,4 @@
+//orderModel.js
 import mongoose from "mongoose";
 
 const orderSchema = mongoose.Schema(
@@ -27,10 +28,13 @@ const orderSchema = mongoose.Schema(
     },
 
     paymentResult: {
-      id: { type: String },
+      transaction_id: { type: String },
+      order_id: { type: String },
       status: { type: String },
+      state: { type: String },
       update_time: { type: String },
-      email_address: { type: String },
+      payment_method: { type: String },
+      amount_paid: { type: Number },
     },
 
     itemsPrice: {

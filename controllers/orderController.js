@@ -1,3 +1,4 @@
+//orderController.js
 import Order from "../models/orderModel.js";
 import Product from "../models/productModel.js";
 
@@ -25,6 +26,8 @@ function calcPrices(orderItems) {
     totalPrice,
   };
 }
+
+
 
 const createOrder = async (req, res) => {
   try {
@@ -156,30 +159,32 @@ const findOrderById = async (req, res) => {
   }
 };
 
-const markOrderAsPaid = async (req, res) => {
+const markOrderAsPaid = async (orderId, paymentData) => {
   try {
-    const order = await Order.findById(req.params.id);
+    const order = await Order.findById(orderId);
 
     if (order) {
       order.isPaid = true;
       order.paidAt = Date.now();
       order.paymentResult = {
-        id: req.body.id,
-        status: req.body.status,
-        update_time: req.body.update_time,
-        email_address: req.body.payer.email_address,
+        transaction_id: paymentData.transaction_id,
+        order_id: paymentData.order_id,
+        status: paymentData.status,
+        state: paymentData.state,
+        update_time: paymentData.update_time,
+        payment_method: paymentData.payment_method,
+        amount_paid: paymentData.amount_paid,
       };
 
-      const updateOrder = await order.save();
-      res.status(200).json(updateOrder);
+      return await order.save(); // Return the updated order
     } else {
-      res.status(404);
       throw new Error("Order not found");
     }
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    throw new Error(error.message); // Propagate the error
   }
 };
+
 
 const markOrderAsDelivered = async (req, res) => {
   try {
@@ -199,6 +204,8 @@ const markOrderAsDelivered = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+
 
 export {
   createOrder,
