@@ -46,7 +46,7 @@ const createOrder = async (req, res) => {
       const matchingItemFromDB = itemsFromDB.find(
         (itemFromDB) => itemFromDB._id.toString() === itemFromClient._id
       );
-
+      
       if (!matchingItemFromDB) {
         res.status(404);
         throw new Error(`Product not found: ${itemFromClient._id}`);
@@ -91,12 +91,38 @@ const getAllOrders = async (req, res) => {
 
 const getUserOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ user: req.user._id, isPaid: true });
-    res.json(orders);
+    // Find orders for the user and populate the product's category name in orderItems
+    const orders = await Order.find({ user: req.user._id, isPaid: true })
+      .populate({
+        path: 'orderItems.product',
+        populate: {
+          path: 'category',
+          select: 'name', // Populate only the name field of the category
+        },
+        select: 'name category image price', // Include necessary fields in product
+      });
+
+    // Transform the populated data to match the desired format
+    const transformedOrders = orders.map(order => {
+      // Transform each order item to replace category ID with category name and simplify product reference
+      const transformedItems = order.orderItems.map(item => ({
+        ...item.toObject(),
+        category: item.product.category.name, // Replace category ID with the name
+        product: item.product._id, // Keep only the product ID
+      }));
+
+      return {
+        ...order.toObject(),
+        orderItems: transformedItems,
+      };
+    });
+
+    res.json(transformedOrders);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 const countTotalOrders = async (req, res) => {
   try {
@@ -143,21 +169,39 @@ const calcualteTotalSalesByDate = async (req, res) => {
 
 const findOrderById = async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id).populate(
-      "user",
-      "username email"
-    );
+    // Find the order by ID and populate the user, and the category name in products
+    const order = await Order.findById(req.params.id)
+      .populate("user", "username email") // Populating user fields
+      .populate({
+        path: "orderItems.product",
+        populate: {
+          path: "category",
+          select: "name", // Populate only the name of the category
+        },
+        select: "name category image price", // Include necessary fields in product
+      });
 
-    if (order) {
-      res.json(order);
-    } else {
+    if (!order) {
       res.status(404);
       throw new Error("Order not found");
     }
+
+    // Transform the order to replace category ID with category name and keep only product ID
+    const transformedOrder = {
+      ...order.toObject(),
+      orderItems: order.orderItems.map(item => ({
+        ...item.toObject(),
+        category: item.product.category.name, // Replace category ID with the category name
+        product: item.product._id, // Keep only the product ID
+      })),
+    };
+
+    res.json(transformedOrder);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 const markOrderAsPaid = async (orderId, paymentData) => {
   try {
@@ -185,6 +229,43 @@ const markOrderAsPaid = async (orderId, paymentData) => {
   }
 };
 
+const markOrderAsShipped = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+
+    if (order) {
+      order.isShipped = true;
+      order.shippedAt = Date.now();
+
+      const updatedOrder = await order.save();
+      res.json(updatedOrder);
+    } else {
+      res.status(404);
+      throw new Error("Order not found");
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const markOrderAsOutForDelivery = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+
+    if (order) {
+      order.isOutForDelivery = true;
+      order.outForDeliveryAt = Date.now();
+
+      const updatedOrder = await order.save();
+      res.json(updatedOrder);
+    } else {
+      res.status(404);
+      throw new Error("Order not found");
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
 
 const markOrderAsDelivered = async (req, res) => {
   try {
@@ -216,5 +297,7 @@ export {
   calcualteTotalSalesByDate,
   findOrderById,
   markOrderAsPaid,
+  markOrderAsShipped,
+  markOrderAsOutForDelivery,
   markOrderAsDelivered,
 };

@@ -71,6 +71,26 @@ const orderSchema = mongoose.Schema(
       type: Date,
     },
 
+    isShipped: {
+      type: Boolean,
+      required: true,
+      default: false,
+    },
+
+    shippedAt: {
+      type: Date,
+    },
+
+    isOutForDelivery: {
+      type: Boolean,
+      required: true,
+      default: false,
+    },
+
+    outForDeliveryAt: {
+      type: Date,
+    },
+
     isDelivered: {
       type: Boolean,
       required: true,
