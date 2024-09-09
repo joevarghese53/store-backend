@@ -100,7 +100,7 @@ const getUserOrders = async (req, res) => {
           select: 'name', // Populate only the name field of the category
         },
         select: 'name category image price', // Include necessary fields in product
-      });
+      }).sort({ createdAt: -1 });
 
     // Transform the populated data to match the desired format
     const transformedOrders = orders.map(order => {
