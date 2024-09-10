@@ -1,6 +1,7 @@
 //orderController.js
 import Order from "../models/orderModel.js";
 import Product from "../models/productModel.js";
+import nodemailer from 'nodemailer';
 
 // Utility Function
 function calcPrices(orderItems) {
@@ -205,7 +206,7 @@ const findOrderById = async (req, res) => {
 
 const markOrderAsPaid = async (orderId, paymentData) => {
   try {
-    const order = await Order.findById(orderId);
+    const order = await Order.findById(orderId).populate("user", "username email");
 
     if (order) {
       order.isPaid = true;
@@ -220,7 +221,11 @@ const markOrderAsPaid = async (orderId, paymentData) => {
         amount_paid: paymentData.amount_paid,
       };
 
-      return await order.save(); // Return the updated order
+      await order.save(); // Return the updated order
+
+      await sendOrderConfirmationEmail(order, paymentData);
+
+      return order;
     } else {
       throw new Error("Order not found");
     }
@@ -228,6 +233,46 @@ const markOrderAsPaid = async (orderId, paymentData) => {
     throw new Error(error.message); // Propagate the error
   }
 };
+
+const sendOrderConfirmationEmail = async (order, paymentData) => {
+  try {
+    // Create a transporter
+    console.log('Sending order confirmation email...', order);
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false, // true for 465, false for other ports
+      auth: {
+        user: process.env.EMAIL_ADDRESS, // Your Gmail email
+        pass: process.env.EMAIL_PASSWORD, // Your Gmail app password
+      },
+    });
+    
+
+    // Email content
+    const mailOptions = {
+      from: `"Dgen Stores" <${process.env.EMAIL_ADDRESS}>`, // sender address
+      to: order.user.email, // recipient email from order
+      subject: 'Order Confirmation - ' + order._id, // Subject line
+      text: `Hi ${order.user.username},\n\nYour payment of ₹${paymentData.amount_paid} has been successfully received for Order ID: ${order._id}.\n\nTransaction ID: ${paymentData.transaction_id}\nPayment Method: ${paymentData.payment_method}\n\nThank you for shopping with us!\n\nBest Regards,\nYour Store Team`, // plain text body
+      html: `<h1>Order Confirmation</h1>
+            <p>Hi ${order.user.username},</p>
+            <p>Your payment of <strong>₹${paymentData.amount_paid}</strong> has been successfully received for Order ID: <strong>${order._id}</strong>.</p>
+            <p>Transaction ID: ${paymentData.transaction_id}</p>
+            <p>Payment Method: ${paymentData.payment_method}</p>
+            <p>Thank you for shopping with us!</p>
+            <p>Best Regards,<br>Dgen Team</p>`, // html body
+    };
+
+    // Send the email
+    let info = await transporter.sendMail(mailOptions);
+    console.log('Message sent: %s', info.messageId);
+  } catch (error) {
+    console.error('Error sending order confirmation email:', error.message);
+  }
+};
+
 
 const markOrderAsShipped = async (req, res) => {
   try {

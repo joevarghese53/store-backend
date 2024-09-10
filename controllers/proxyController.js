@@ -15,12 +15,13 @@ const initiatePayment = asyncHandler(async (req, res) => {
             merchantUserId: req.body.customerUserId,
             amount: req.body.amount,
             name: req.body.name,
-            redirectUrl: `https://store-backend-2r39.onrender.com/api/payment/status?id=${merchantTransaction_Id}`,
+            redirectUrl: `${process.env.BACKEND_URL}/api/payment/status?id=${merchantTransaction_Id}`,
             redirectMode: "POST",
             paymentInstrument: {
                 type: "PAY_PAGE",
             },
         };
+
 
         const payload = JSON.stringify(data);
         const payloadMain = Buffer.from(payload).toString("base64");
@@ -105,11 +106,11 @@ const checkPaymentStatus = asyncHandler(async (req, res) => {
 
                         await markOrderAsPaid(orderId, paymentData);
 
-                        const url = `https://store-frontend-taupe.vercel.app/PaymentSuccessPage?id=${orderId}`;
+                        const url = `${process.env.FRONTEND_URL}/PaymentSuccessPage?id=${orderId}`;
                         return res.redirect(url);
                     } catch (error) {
                         console.log("Error updating order payment status:", error.message);
-                        const url = `https://store-frontend-taupe.vercel.app/PaymentFailedPage?id=${orderId}`;
+                        const url = `${process.env.FRONTEND_URL}/PaymentFailedPage?id=${orderId}`;
                         return res.redirect(url);
                     }
 
@@ -130,25 +131,25 @@ const checkPaymentStatus = asyncHandler(async (req, res) => {
                 case 'TIMED_OUT':
                     console.log(`${code} - Redirecting to PaymentFailedPage`);
                     const errorMessage = encodeURIComponent(`Error: ${code}`);
-                    const errorUrl = `https://store-frontend-taupe.vercel.app/PaymentFailedPage?message=${errorMessage}&id=${orderId}`;
+                    const errorUrl = `${process.env.FRONTEND_URL}/PaymentFailedPage?message=${errorMessage}&id=${orderId}`;
                     return res.redirect(errorUrl);
 
                 default:
                     console.log("Unhandled response code:", code);
-                    const unhandledUrl = `https://store-frontend-taupe.vercel.app/PaymentFailedPage?message=Unhandled%20Response&id=${orderId}`;
+                    const unhandledUrl = `${process.env.FRONTEND_URL}/PaymentFailedPage?message=Unhandled%20Response&id=${orderId}`;
                     return res.redirect(unhandledUrl);
             }
         } catch (error) {
             console.log("Error with payment request:", error.message);
             const orderId = req.query.id; // Ensure orderId is retrieved if possible
-            const url = `https://store-frontend-taupe.vercel.app/PaymentFailedPage?id=${orderId}`;
+            const url = `${process.env.FRONTEND_URL}/PaymentFailedPage?id=${orderId}`;
             return res.redirect(url);
         }
 
     } catch (error) {
         console.log(error);
         const orderId = req.query.id; // Ensure orderId is retrieved if possible
-        const url = `https://store-frontend-taupe.vercel.app/PaymentFailedPage?id=${orderId}`;
+        const url = `${process.env.FRONTEND_URL}/PaymentFailedPage?id=${orderId}`;
         return res.redirect(url);
     }
 });
