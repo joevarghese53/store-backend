@@ -71,4 +71,22 @@ const updateCartItem = asyncHandler(async (req, res) => {
   }
 });
 
-export { getCart, addToCart, removeFromCart, updateCartItem };
+const clearCart = async (user_Id) => {
+  try {
+    const cart = await Cart.findOne({ userId: user_Id });
+
+    if (cart) {
+      console.log('Cart before clearing:', cart); // Log cart before clearing
+      cart.items = [];  // Clear all items from the cart
+      await cart.save();
+      console.log('Cart after clearing:', cart); // Log cart after clearing
+    } else {
+      throw new Error("Cart not found");
+    }
+  } catch (error) {
+    console.error('Error clearing cart:', error); // Log any errors
+    return { success: false, message: error.message };
+  }
+};
+
+export { getCart, addToCart, removeFromCart, updateCartItem, clearCart };

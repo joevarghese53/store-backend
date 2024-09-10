@@ -2,6 +2,7 @@
 import Order from "../models/orderModel.js";
 import Product from "../models/productModel.js";
 import nodemailer from 'nodemailer';
+import { clearCart } from "./cartController.js";
 
 // Utility Function
 function calcPrices(orderItems) {
@@ -225,6 +226,9 @@ const markOrderAsPaid = async (orderId, paymentData) => {
 
       await sendOrderConfirmationEmail(order, paymentData);
 
+      // Clear the user's cart after successful payment
+      await clearCart(order.user._id);
+
       return order;
     } else {
       throw new Error("Order not found");
@@ -261,7 +265,7 @@ const sendOrderConfirmationEmail = async (order, paymentData) => {
       <h3>Hi ${order.user.username},</h3>
       <p>Your order has been successfully placed.</p>
       <p><strong>Order ID:</strong> ${order._id}</p>
-      <p>We are committed to serving you with the utmost care. Please note, the delivery date may change based on the government's zonal advisory in your area.</p>
+      <p>We are committed to serving you with the utmost care. Please note, the delivery is done by a third-party service and the delivery time may vary. We will keep you updated on the status of your order.</p>
       <hr style="border-top: 1px solid #ddd;">
       <h4>Order Summary</h4>
       <p><strong>Amount Paid:</strong> ₹${paymentData.amount_paid}</p>

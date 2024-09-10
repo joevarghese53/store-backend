@@ -1,7 +1,7 @@
 // routes/cartRoutes.js
 import express from "express";
 const router = express.Router();
-import { getCart, addToCart, removeFromCart, updateCartItem } from "../controllers/cartController.js";
+import { getCart, addToCart, removeFromCart, updateCartItem, clearCart } from "../controllers/cartController.js";
 import { authenticate } from "../middlewares/authMiddleware.js";
 
 router.route("/")
