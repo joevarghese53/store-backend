@@ -47,7 +47,7 @@ const createOrder = async (req, res) => {
       const matchingItemFromDB = itemsFromDB.find(
         (itemFromDB) => itemFromDB._id.toString() === itemFromClient._id
       );
-      
+
       if (!matchingItemFromDB) {
         res.status(404);
         throw new Error(`Product not found: ${itemFromClient._id}`);
@@ -248,22 +248,33 @@ const sendOrderConfirmationEmail = async (order, paymentData) => {
         pass: process.env.EMAIL_PASSWORD, // Your Gmail app password
       },
     });
-    
+
 
     // Email content
     const mailOptions = {
       from: `"Dgen Stores" <${process.env.EMAIL_ADDRESS}>`, // sender address
       to: order.user.email, // recipient email from order
-      subject: 'Order Confirmation - ' + order._id, // Subject line
-      text: `Hi ${order.user.username},\n\nYour payment of ₹${paymentData.amount_paid} has been successfully received for Order ID: ${order._id}.\n\nTransaction ID: ${paymentData.transaction_id}\nPayment Method: ${paymentData.payment_method}\n\nThank you for shopping with us!\n\nBest Regards,\nYour Store Team`, // plain text body
-      html: `<h1>Order Confirmation</h1>
-            <p>Hi ${order.user.username},</p>
-            <p>Your payment of <strong>₹${paymentData.amount_paid}</strong> has been successfully received for Order ID: <strong>${order._id}</strong>.</p>
-            <p>Transaction ID: ${paymentData.transaction_id}</p>
-            <p>Payment Method: ${paymentData.payment_method}</p>
-            <p>Thank you for shopping with us!</p>
-            <p>Best Regards,<br>Dgen Team</p>`, // html body
+      subject: 'Order Confirmed', // Subject line
+      html: `
+    <div style="font-family: Arial, sans-serif; border: 1px solid #ddd; padding: 20px; max-width: 600px; margin: auto;">
+      <h2 style="background-color: #2874F0; color: white; padding: 10px; text-align: center;">Dgen Stores</h2>
+      <h3>Hi ${order.user.username},</h3>
+      <p>Your order has been successfully placed.</p>
+      <p><strong>Order ID:</strong> ${order._id}</p>
+      <p>We are committed to serving you with the utmost care. Please note, the delivery date may change based on the government's zonal advisory in your area.</p>
+      <hr style="border-top: 1px solid #ddd;">
+      <h4>Order Summary</h4>
+      <p><strong>Amount Paid:</strong> ₹${paymentData.amount_paid}</p>
+      <p><strong>Delivery Address:</strong> ${order.shippingAddress.address}, ${order.shippingAddress.city} - ${order.shippingAddress.postalCode}</p>
+      <p><strong>Payment Method:</strong> ${paymentData.payment_method}</p>
+      <hr style="border-top: 1px solid #ddd;">
+      <h4>Thank you for shopping with us!</h4>
+      <p>We will notify you once your item is shipped. Stay tuned for more updates via mail at ${order.user.email}.</p>
+      <p>Best Regards,<br>Dgen Team</p>
+    </div>
+  `,
     };
+
 
     // Send the email
     let info = await transporter.sendMail(mailOptions);
