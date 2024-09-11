@@ -3,7 +3,7 @@ import asyncHandler from "../middlewares/asyncHandler.js";
 
 const createShippingAddress = asyncHandler(async (req, res) => {
     try {
-      const { address, city, postalCode, country, phoneno } = req.body;
+      const { address, city, postalCode, state, country, phoneno } = req.body;
       const userId = req.user._id;
   
       if (!userId) {
@@ -15,6 +15,7 @@ const createShippingAddress = asyncHandler(async (req, res) => {
         address,
         city,
         postalCode,
+        state,
         country,
         phoneno
       });
@@ -48,11 +49,11 @@ const createShippingAddress = asyncHandler(async (req, res) => {
   const updateShippingAddress = asyncHandler(async (req, res) => {
     try {
       const { id } = req.params;
-      const { address, city, postalCode, country, phoneno } = req.body;
+      const { address, city, postalCode, state, country, phoneno } = req.body;
   
       const updatedAddress = await ShippingAddress.findByIdAndUpdate(
         id,
-        { address, city, postalCode, country, phoneno },
+        { address, city, postalCode, state, country, phoneno },
         { new: true }
       );
   
