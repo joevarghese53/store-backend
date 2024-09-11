@@ -3,11 +3,27 @@ import Cart from "../models/cartModel.js";
 import asyncHandler from "../middlewares/asyncHandler.js";
 
 const getCart = asyncHandler(async (req, res) => {
-  const cart = await Cart.findOne({ userId: req.user._id }).populate('items.productId');
+  const cart = await Cart.findOne({ userId: req.user._id }).populate({
+    path: 'items.productId',
+    populate: {
+        path: 'category', // Populate category field inside productId
+        select: 'name'   // Select only the 'name' field from Category
+    }
+});
   if (!cart) {
     return res.status(404).json({ message: 'Cart not found' });
   }
-  res.json(cart);
+  
+  const transformedWishlist = cart.toObject();  // Convert Mongoose document to plain JS object
+    transformedWishlist.items = transformedWishlist.items.map(item => {
+        if (item.productId && item.productId.category) {
+            // Replace category object with category name
+            item.productId.category = item.productId.category.name;
+        }
+        return item;
+    });
+
+    res.json(transformedWishlist);
 });
 
 const addToCart = asyncHandler(async (req, res) => {
