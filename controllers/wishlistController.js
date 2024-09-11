@@ -27,6 +27,8 @@ const getWishlist = asyncHandler(async (req, res) => {
     res.json(transformedWishlist);
 });
 
+
+
 const addToWishlist = asyncHandler(async (req, res) => {
     const { productId } = req.body;
     if (!productId) {
@@ -71,4 +73,21 @@ const removeFromWishlist = asyncHandler(async (req, res) => {
     }
 });
 
-export { getWishlist, addToWishlist, removeFromWishlist };
+const checkItemInWishlist = asyncHandler(async (req, res) => {
+    const { productId } = req.params;
+    const wishlist = await Wishlist.findOne({ userId: req.user._id });
+    if (wishlist) {
+        const itemExists = wishlist.items.some(item => item.productId.toString() === productId);
+        if (itemExists) {
+            res.json({ exists: itemExists });
+        }
+        else {
+            res.json({ exists: false });
+        }
+
+    } else {
+        res.json({ exists: false });
+    }
+});
+
+export { getWishlist, addToWishlist, removeFromWishlist, checkItemInWishlist };

@@ -1,7 +1,7 @@
 // routes/cartRoutes.js
 import express from "express";
 const router = express.Router();
-import { getWishlist, addToWishlist, removeFromWishlist } from "../controllers/wishlistController.js";
+import { getWishlist, addToWishlist, removeFromWishlist, checkItemInWishlist } from "../controllers/wishlistController.js";
 import { authenticate } from "../middlewares/authMiddleware.js";
 
 router.route("/")
@@ -9,6 +9,7 @@ router.route("/")
   .post(authenticate, addToWishlist)
 
 router.route("/:productId")
-  .delete(authenticate, removeFromWishlist);
+  .delete(authenticate, removeFromWishlist)
+  .get(authenticate, checkItemInWishlist)
 
 export default router;
