@@ -126,24 +126,67 @@ const getUserOrders = async (req, res) => {
 };
 
 
-const countTotalOrders = async (req, res) => {
+const countTotalOrdersByDate = async (req, res) => {
   try {
-    const totalOrders = await Order.countDocuments();
-    res.json({ totalOrders });
+    const ordersByDate = await Order.aggregate([
+      {
+        $match: {
+          isPaid: true,
+        },
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: "%Y-%m-%d", date: "$paidAt" },
+          },
+          totalOrders: { $sum: 1 },
+        },
+      },
+    ]);
+
+    res.json(ordersByDate);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
+
 const calculateTotalSales = async (req, res) => {
   try {
-    const orders = await Order.find();
+    const orders = await Order.find({ isPaid: true });
     const totalSales = orders.reduce((sum, order) => sum + order.totalPrice, 0);
     res.json({ totalSales });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
+const calculateTotalProductsSoldByDate = async (req, res) => {
+  try {
+    const productsSoldByDate = await Order.aggregate([
+      {
+        $match: {
+          isPaid: true,
+        },
+      },
+      {
+        $unwind: "$orderItems",
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: "%Y-%m-%d", date: "$paidAt" },
+          },
+          totalProductsSold: { $sum: "$orderItems.qty" },
+        },
+      },
+    ]);
+
+    res.json(productsSoldByDate);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 
 const calcualteTotalSalesByDate = async (req, res) => {
   try {
@@ -161,6 +204,9 @@ const calcualteTotalSalesByDate = async (req, res) => {
           totalSales: { $sum: "$totalPrice" },
         },
       },
+      {
+        $sort: { _id: 1 }, // Sort by _id (date) in ascending order
+      },
     ]);
 
     res.json(salesByDate);
@@ -168,6 +214,7 @@ const calcualteTotalSalesByDate = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 const findOrderById = async (req, res) => {
   try {
@@ -403,8 +450,9 @@ export {
   createOrder,
   getAllOrders,
   getUserOrders,
-  countTotalOrders,
+  countTotalOrdersByDate,
   calculateTotalSales,
+  calculateTotalProductsSoldByDate,
   calcualteTotalSalesByDate,
   findOrderById,
   markOrderAsPaid,
