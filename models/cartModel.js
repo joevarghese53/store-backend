@@ -1,10 +1,17 @@
 // models/cartModel.js
 import mongoose from "mongoose";
 
+// const cartItemSchema = new mongoose.Schema({
+//   productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+//   quantity: { type: Number, required: true, default: 1 },
+// });
+
 const cartItemSchema = new mongoose.Schema({
-  productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+  productId: { type: mongoose.Schema.Types.ObjectId, required: true },
+  productType: { type: String, required: true, enum: ['Product', 'CustomProduct'] }, // 'Product' or 'CustomProduct'
   quantity: { type: Number, required: true, default: 1 },
 });
+
 
 const cartSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },

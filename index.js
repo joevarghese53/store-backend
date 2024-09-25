@@ -17,6 +17,7 @@ import shippingAddressRoutes from "./routes/shippingAddressRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import proxyRoutes from "./routes/proxyRoutes.js";
 import wishlistRoutes from "./routes/wishlistRoutes.js";
+import cProductRoutes from "./routes/cProductRoutes.js";
 
 
 dotenv.config();
@@ -46,6 +47,7 @@ app.use("/api/shipping", shippingAddressRoutes);
 app.use("/api/orders", orderRoutes);  
 app.use("/api/payment", proxyRoutes); 
 app.use("/api/wishlist", wishlistRoutes);
+app.use("/api/cproducts", cProductRoutes);
 
 
 

@@ -75,9 +75,12 @@ const createOrder = async (req, res) => {
       totalPrice,
     });
 
+    console.log(order);
+
     const createdOrder = await order.save();
     res.status(201).json(createdOrder);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: error.message });
   }
 };

@@ -7,7 +7,6 @@ const getWishlist = asyncHandler(async (req, res) => {
         path: 'items.productId',
         populate: {
             path: 'category', // Populate category field inside productId
-            select: 'name'   // Select only the 'name' field from Category
         }
     });
 
@@ -16,14 +15,6 @@ const getWishlist = asyncHandler(async (req, res) => {
         return res.status(404).json({ message: 'Wishlist not found' });
     }
     const transformedWishlist = wishlist.toObject();  // Convert Mongoose document to plain JS object
-    transformedWishlist.items = transformedWishlist.items.map(item => {
-        if (item.productId && item.productId.category) {
-            // Replace category object with category name
-            item.productId.category = item.productId.category.name;
-        }
-        return item;
-    });
-
     res.json(transformedWishlist);
 });
 
