@@ -12,10 +12,10 @@ const orderSchema = mongoose.Schema(
         image: { type: String, required: true },
         price: { type: Number, required: true },
         product: {
-          type: mongoose.Schema.Types.ObjectId,
-          required: true,
-          ref: "Product",
+          type: mongoose.Schema.Types.ObjectId, 
+          refPath: 'orderItems.productType', // Dynamic reference based on productType
         },
+        productType: { type: String, required: true }, // Product type to distinguish between 'Product' and 'CustomProduct'
       },
     ],
 

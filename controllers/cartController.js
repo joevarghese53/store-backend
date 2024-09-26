@@ -48,7 +48,7 @@ const getCart = asyncHandler(async (req, res) => {
           category: product.category.name // Replace category object with name
         },
       };
-    } else if (item.productType === 'CustomProduct') {
+    } else if (item.productType === 'cProduct') {
       // Populate CustomProduct details
       const cProductDoc = await cProduct.findOne({ userId: req.user._id }).populate({
         path: 'customProducts.category',
@@ -117,7 +117,7 @@ const addToCart = asyncHandler(async (req, res) => {
   let product;
   if (productType === 'Product') {
     product = await Product.findById(productId);
-  }else if (productType === 'CustomProduct') {
+  }else if (productType === 'cProduct') {
     // Find the cProduct document that contains the customProduct
     const cProductDoc = await cProduct.findOne({ userId: req.user._id });
 

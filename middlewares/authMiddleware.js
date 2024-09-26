@@ -5,19 +5,16 @@ import asyncHandler from "./asyncHandler.js";
 
 const authenticate = asyncHandler(async (req, res, next) => {
   let token;
-  console.log('authenticating.........');
 
   // Read JWT from the 'jwt' cookie
   token = req.cookies.jwt;
 
-  console.log('token:', token);
 
   if (token) {
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       req.user = await User.findById(decoded.userId).select("-password");
       next();
-      console.log('user:', req.user);
     } catch (error) {
       res.status(401);
       throw new Error("Not authorized, token failed.");

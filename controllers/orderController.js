@@ -1,6 +1,7 @@
 //orderController.js
 import Order from "../models/orderModel.js";
 import Product from "../models/productModel.js";
+import cProduct from "../models/cProductModel.js";
 import nodemailer from 'nodemailer';
 import { clearCart } from "./cartController.js";
 
@@ -40,14 +41,32 @@ const createOrder = async (req, res) => {
       throw new Error("No order items");
     }
 
+    const productItems = orderItems.filter(item => item.productType === 'Product');
+    const customProductItems = orderItems.filter(item => item.productType === 'cProduct');
+
     const itemsFromDB = await Product.find({
-      _id: { $in: orderItems.map((x) => x._id) },
+      _id: { $in: productItems.map((x) => x._id) },
     });
 
+    const customProductDoc = await cProduct.findOne({ userId: req.user._id });
+    const customItemsFromDB = customProductDoc
+      ? customProductDoc.customProducts.filter((customProd) =>
+        customProductItems.some((item) => customProd._id.toString() === item._id)
+      )
+      : [];
+
     const dbOrderItems = orderItems.map((itemFromClient) => {
-      const matchingItemFromDB = itemsFromDB.find(
-        (itemFromDB) => itemFromDB._id.toString() === itemFromClient._id
-      );
+      let matchingItemFromDB;
+
+      if (itemFromClient.productType === 'Product') {
+        matchingItemFromDB = itemsFromDB.find(
+          (itemFromDB) => itemFromDB._id.toString() === itemFromClient._id
+        );
+      } else if (itemFromClient.productType === 'cProduct') {
+        matchingItemFromDB = customItemsFromDB.find(
+          (itemFromDB) => itemFromDB._id.toString() === itemFromClient._id
+        );
+      }
 
       if (!matchingItemFromDB) {
         res.status(404);
@@ -75,7 +94,7 @@ const createOrder = async (req, res) => {
       totalPrice,
     });
 
-    console.log(order);
+    console.log("created order : ", order);
 
     const createdOrder = await order.save();
     res.status(201).json(createdOrder);
@@ -97,32 +116,10 @@ const getAllOrders = async (req, res) => {
 const getUserOrders = async (req, res) => {
   try {
     // Find orders for the user and populate the product's category name in orderItems
-    const orders = await Order.find({ user: req.user._id, isPaid: true })
-      .populate({
-        path: 'orderItems.product',
-        populate: {
-          path: 'category',
-          select: 'name', // Populate only the name field of the category
-        },
-        select: 'name category image price', // Include necessary fields in product
-      }).sort({ createdAt: -1 });
+    const orders = await Order.find({ user: req.user._id, isPaid: true }).sort({ createdAt: -1 });
+    console.log('orders fetched from db:', orders);
 
-    // Transform the populated data to match the desired format
-    const transformedOrders = orders.map(order => {
-      // Transform each order item to replace category ID with category name and simplify product reference
-      const transformedItems = order.orderItems.map(item => ({
-        ...item.toObject(),
-        category: item.product.category.name, // Replace category ID with the name
-        product: item.product._id, // Keep only the product ID
-      }));
-
-      return {
-        ...order.toObject(),
-        orderItems: transformedItems,
-      };
-    });
-
-    res.json(transformedOrders);
+    res.json(orders);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -223,15 +220,8 @@ const findOrderById = async (req, res) => {
   try {
     // Find the order by ID and populate the user, and the category name in products
     const order = await Order.findById(req.params.id)
-      .populate("user", "username email") // Populating user fields
-      .populate({
-        path: "orderItems.product",
-        populate: {
-          path: "category",
-          select: "name", // Populate only the name of the category
-        },
-        select: "name category image price", // Include necessary fields in product
-      });
+      
+    console.log('order fetched from db:', order);
 
     if (!order) {
       res.status(404);
@@ -239,16 +229,9 @@ const findOrderById = async (req, res) => {
     }
 
     // Transform the order to replace category ID with category name and keep only product ID
-    const transformedOrder = {
-      ...order.toObject(),
-      orderItems: order.orderItems.map(item => ({
-        ...item.toObject(),
-        category: item.product.category.name, // Replace category ID with the category name
-        product: item.product._id, // Keep only the product ID
-      })),
-    };
+   
 
-    res.json(transformedOrder);
+    res.json(order);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -367,7 +350,7 @@ const markOrderAsOutForDelivery = async (req, res) => {
       order.outForDeliveryAt = Date.now();
 
       const updatedOrder = await order.save();
-      
+
       await sendOrderOutForDeliveryEmail(updatedOrder);
 
       res.json(updatedOrder);
