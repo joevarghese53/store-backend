@@ -4,26 +4,6 @@ import Product from "../models/productModel.js";
 import cProduct from "../models/cProductModel.js";
 import asyncHandler from "../middlewares/asyncHandler.js";
 
-// const getCart = asyncHandler(async (req, res) => {
-
-//   const cart = await Cart.findOne({ userId: req.user._id });
-//   console.log('Cart:', cart);
-//   if (!cart) {
-//     return res.status(404).json({ message: 'Cart not found' });
-//   }
-  
-//   const transformedWishlist = cart.toObject();  // Convert Mongoose document to plain JS object
-//     transformedWishlist.items = transformedWishlist.items.map(item => {
-//         if (item.productId && item.productId.category) {
-//             // Replace category object with category name
-//             item.productId.category = item.productId.category.name;
-//         }
-//         return item;
-//     });
-
-//     res.json(transformedWishlist);
-// });
-
 
 const getCart = asyncHandler(async (req, res) => {
   // Find the cart for the user
@@ -72,36 +52,6 @@ const getCart = asyncHandler(async (req, res) => {
   });
 });
 
-
-// const addToCart = asyncHandler(async (req, res) => {
-//   const { productId, quantity } = req.body;
-//   if (!productId || !quantity) {
-//     return res.status(400).json({ message: 'Product ID and quantity are required.' });
-//   }
-//   console.log(`Adding productId: ${productId}, quantity: ${quantity}`);
-
-//   let cart = await Cart.findOne({ userId: req.user._id });
-
-//   if (cart) {
-//     const itemIndex = cart.items.findIndex(item => item.productId.toString() === productId);
-//     if (itemIndex > -1) {
-//       console.log(`Item found in cart, updating quantity from ${cart.items[itemIndex].quantity} to ${cart.items[itemIndex].quantity + quantity}`);
-//       cart.items[itemIndex].quantity += quantity;
-//     } else {
-//       console.log(`Item not found in cart, adding new item with quantity ${quantity}`);
-//       cart.items.push({ productId, quantity });
-//     }
-//   } else {
-//     console.log(`Cart not found, creating a new cart with item quantity ${quantity}`);
-//     cart = new Cart({
-//       userId: req.user._id,
-//       items: [{ productId, quantity }],
-//     });
-//   }
-
-//   await cart.save();
-//   res.status(201).json(cart);
-// });
 
 const addToCart = asyncHandler(async (req, res) => {
   const { productId, productType, quantity  } = req.body;
