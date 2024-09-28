@@ -54,20 +54,20 @@ const getCart = asyncHandler(async (req, res) => {
 
 
 const addToCart = asyncHandler(async (req, res) => {
-  const { productId, productType, quantity  } = req.body;
+  const { productId, productType, quantity, size } = req.body;
 
   console.log(req.body);
 
   // Check if required fields are provided
-  if (!productId || !quantity || !productType) {
-    return res.status(400).json({ message: 'Product ID, quantity, and product type are required.' });
+  if (!productId || !quantity || !productType || !size) {
+    return res.status(400).json({ message: 'Product ID, quantity, size and product type are required.' });
   }
 
   // Determine which model to check based on productType
   let product;
   if (productType === 'Product') {
     product = await Product.findById(productId);
-  }else if (productType === 'cProduct') {
+  } else if (productType === 'cProduct') {
     // Find the cProduct document that contains the customProduct
     const cProductDoc = await cProduct.findOne({ userId: req.user._id });
 
@@ -89,20 +89,24 @@ const addToCart = asyncHandler(async (req, res) => {
   if (cart) {
     // Check if the product is already in the cart
     console.log('Cart found:', cart);
-    const itemIndex = cart.items.findIndex(item => item.productId.toString() === productId && item.productType === productType);
+    const itemIndex = cart.items.findIndex(item => 
+      item.productId.toString() === productId && 
+      item.productType === productType && 
+      item.size === size
+    );
 
     if (itemIndex > -1) {
-      // If the product is in the cart, update the quantity
+      // If the product with the same size is in the cart, update the quantity
       cart.items[itemIndex].quantity += quantity;
     } else {
-      // If the product is not in the cart, add it
-      cart.items.push({ productId, productType, quantity  });
+      // If the product with that size is not in the cart, add it
+      cart.items.push({ productId, productType, quantity, size });
     }
   } else {
     // If no cart exists, create one with the new item
     cart = new Cart({
       userId: req.user._id,
-      items: [{ productId, productType, quantity }],
+      items: [{ productId, productType, quantity, size }],
     });
   }
   console.log('Saving cart:', cart);
@@ -113,11 +117,11 @@ const addToCart = asyncHandler(async (req, res) => {
 
 
 const removeFromCart = asyncHandler(async (req, res) => {
-  const { productId } = req.params;
+  const { productId, size } = req.body;
   const cart = await Cart.findOne({ userId: req.user._id });
 
   if (cart) {
-    cart.items = cart.items.filter(item => item.productId != productId);
+    cart.items = cart.items.filter(item => item.productId != productId || item.size != size);
     await cart.save();
     res.json(cart);
   } else {
@@ -126,11 +130,11 @@ const removeFromCart = asyncHandler(async (req, res) => {
 });
 
 const updateCartItem = asyncHandler(async (req, res) => {
-  const { productId, quantity } = req.body;
+  const { productId, quantity, size } = req.body;
   const cart = await Cart.findOne({ userId: req.user._id });
 
   if (cart) {
-    const itemIndex = cart.items.findIndex(item => item.productId == productId);
+    const itemIndex = cart.items.findIndex(item => item.productId == productId && item.size == size);
     if (itemIndex > -1) {
       cart.items[itemIndex].quantity = quantity;
       await cart.save();

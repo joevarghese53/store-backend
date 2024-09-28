@@ -10,6 +10,7 @@ const cartItemSchema = new mongoose.Schema({
   productId: { type: mongoose.Schema.Types.ObjectId, required: true },
   productType: { type: String, required: true, enum: ['Product', 'cProduct'] }, // 'Product' or 'CustomProduct'
   quantity: { type: Number, required: true, default: 1 },
+  size: { type: String, required: true },
 });
 
 
