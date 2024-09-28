@@ -7,29 +7,42 @@ import { clearCart } from "./cartController.js";
 
 // Utility Function
 function calcPrices(orderItems) {
-  const itemsPrice = orderItems.reduce(
-    (acc, item) => acc + item.price * item.qty,
-    0
-  );
+  let itemsPriceWithTax = 0;
+  let taxPrice = 0;
 
-  const shippingPrice = itemsPrice > 100 ? 0 : 10;
-  const taxRate = 0.15;
-  const taxPrice = (itemsPrice * taxRate).toFixed(2);
+  orderItems.forEach((item) => {
+    // Assuming each item has its own price and GST rate
+    const gstRate = item.price > 1000 ? 0.12 : 0.05; // Adjust rates as needed
 
+    // Calculate the price before tax for each item
+    const itemPriceBeforeTax = item.price / (1 + gstRate);
+
+    // Calculate the GST for each item
+    const itemTaxPrice = item.price - itemPriceBeforeTax;
+
+    // Sum up the total price and tax for all items
+    itemsPriceWithTax += item.price * item.qty;
+    taxPrice += itemTaxPrice * item.qty;
+  });
+
+  // Set shipping price (e.g., free for orders above ₹1000, ₹150 otherwise)
+  const shippingPrice = itemsPriceWithTax > 1000 ? 0 : 150;
+  console.log('itemsPrice (including tax):', itemsPriceWithTax);
+  console.log('shippingPrice:', shippingPrice);
+
+  // Total price includes the price with tax and shipping charges
   const totalPrice = (
-    itemsPrice +
-    shippingPrice +
-    parseFloat(taxPrice)
+    parseFloat(itemsPriceWithTax) + 
+    parseFloat(shippingPrice)
   ).toFixed(2);
 
   return {
-    itemsPrice: itemsPrice.toFixed(2),
-    shippingPrice: shippingPrice.toFixed(2),
-    taxPrice,
-    totalPrice,
+    itemsPrice: (itemsPriceWithTax - taxPrice).toFixed(2), // Price before tax
+    shippingPrice: shippingPrice.toFixed(2), // Shipping charges
+    taxPrice: taxPrice.toFixed(2), // Total GST calculated for all items
+    totalPrice, // Final price including tax and shipping
   };
 }
-
 
 
 const createOrder = async (req, res) => {
