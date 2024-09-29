@@ -13,6 +13,7 @@ import {
   calcualteTotalSalesByDate,
   findOrderById,
   markOrderAsPaid,
+  markOrderAsConfirmed,
   markOrderAsDelivered,
   markOrderAsShipped,
   markOrderAsOutForDelivery,
@@ -35,6 +36,9 @@ router.route("/:id/pay").put(authenticate, markOrderAsPaid);
 router
   .route("/:id/delivered")
   .put(authenticate, authorizeAdmin, markOrderAsDelivered);
+router
+  .route("/:id/confirm")
+  .put(authenticate, authorizeAdmin, markOrderAsConfirmed);
 router
   .route("/:id/shipped")
   .put(authenticate, authorizeAdmin, markOrderAsShipped);

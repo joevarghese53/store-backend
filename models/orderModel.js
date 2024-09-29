@@ -73,6 +73,16 @@ const orderSchema = mongoose.Schema(
       type: Date,
     },
 
+    isConfirmed: {
+      type: Boolean,
+      required: true,
+      default: false,
+    },
+
+    confirmedAt: {
+      type: Date,
+    },
+
     isShipped: {
       type: Boolean,
       required: true,

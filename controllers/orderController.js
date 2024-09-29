@@ -119,7 +119,7 @@ const createOrder = async (req, res) => {
 
 const getAllOrders = async (req, res) => {
   try {
-    const orders = await Order.find({}).populate("user", "id username");
+    const orders = await Order.find({}).populate("user", "id username email");
     res.json(orders);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -232,7 +232,7 @@ const calcualteTotalSalesByDate = async (req, res) => {
 const findOrderById = async (req, res) => {
   try {
     // Find the order by ID and populate the user, and the category name in products
-    const order = await Order.findById(req.params.id)
+    const order = await Order.findById(req.params.id).populate("user", "username email");
       
     console.log('order fetched from db:', order);
 
@@ -334,6 +334,24 @@ const sendOrderConfirmationEmail = async (order, paymentData) => {
   }
 };
 
+const markOrderAsConfirmed = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+
+    if (order) {
+      order.isConfirmed = true;
+      order.confirmedAt = Date.now();
+
+      const updatedOrder = await order.save();
+      res.json(updatedOrder);
+    } else {
+      res.status(404);
+      throw new Error("Order not found");
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
 
 const markOrderAsShipped = async (req, res) => {
   try {
@@ -455,6 +473,7 @@ export {
   calcualteTotalSalesByDate,
   findOrderById,
   markOrderAsPaid,
+  markOrderAsConfirmed,
   markOrderAsShipped,
   markOrderAsOutForDelivery,
   markOrderAsDelivered,
