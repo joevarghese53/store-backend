@@ -89,9 +89,9 @@ const addToCart = asyncHandler(async (req, res) => {
   if (cart) {
     // Check if the product is already in the cart
     console.log('Cart found:', cart);
-    const itemIndex = cart.items.findIndex(item => 
-      item.productId.toString() === productId && 
-      item.productType === productType && 
+    const itemIndex = cart.items.findIndex(item =>
+      item.productId.toString() === productId &&
+      item.productType === productType &&
       item.size === size
     );
 
@@ -165,4 +165,48 @@ const clearCart = async (user_Id) => {
   }
 };
 
-export { getCart, addToCart, removeFromCart, updateCartItem, clearCart };
+const removeAllOfProductFromCart = asyncHandler(async (req, res) => {
+  const { productId } = req.body;
+  console.log("product id request",productId);
+  const cart = await Cart.findOne({ userId: req.user._id });
+  try {
+    if (cart) {
+      console.log('Cart before removing product:', cart); // Log cart before removing product
+      cart.items = cart.items.filter(item => item.productId.toString() !== productId.toString());
+      await cart.save();
+      console.log('Cart after removing product:', cart); // Log cart after removing
+      res.json({ success: true });
+    } else {
+      res.json({ success: true });
+    }
+  } catch (error) {
+    console.error('Error removing product from cart:', error); // Log any errors
+    res.status(500).json({ message: 'Error removing product from cart' });
+  }
+}
+);
+
+const removeAllOfProductFromAllOfCart = asyncHandler(async (req, res) => {
+  const { productId } = req.body;
+  try {
+    const carts = await Cart.find({});
+    if (carts) {
+      console.log('Carts before removing product:', carts); // Log carts before removing product
+      carts.forEach(async (cart) => {
+        cart.items = cart.items.filter(item => item.productId.toString() !== productId.toString());
+        await cart.save();
+      });
+      console.log('Carts after removing product:', carts); // Log carts after removing
+      res.json({ success: true });
+    } else {
+      res.json({ success: true });
+    }
+  } catch (error) {
+    console.error('Error removing product from all carts:', error); // Log any errors
+    res.status(500).json({ message: 'Error removing product from all carts' });
+  }
+}
+);
+
+
+export { getCart, addToCart, removeFromCart, updateCartItem, clearCart, removeAllOfProductFromCart, removeAllOfProductFromAllOfCart };

@@ -1,8 +1,8 @@
 // routes/cartRoutes.js
 import express from "express";
 const router = express.Router();
-import { getCart, addToCart, removeFromCart, updateCartItem } from "../controllers/cartController.js";
-import { authenticate } from "../middlewares/authMiddleware.js";
+import { getCart, addToCart, removeFromCart, updateCartItem, removeAllOfProductFromCart, removeAllOfProductFromAllOfCart } from "../controllers/cartController.js";
+import { authenticate, authorizeAdmin } from "../middlewares/authMiddleware.js";
 
 router.route("/")
   .get(authenticate, getCart)
@@ -10,6 +10,12 @@ router.route("/")
   .put(authenticate, updateCartItem);
 
 router.route("/:productId")
-  .delete(authenticate, removeFromCart);
+  .delete(authenticate, removeFromCart)
+  
+router.route("/all/:productId")
+  .delete(authenticate, removeAllOfProductFromCart)
+
+router.route("/allCart/:productId")
+  .delete(authenticate, authorizeAdmin, removeAllOfProductFromAllOfCart)
 
 export default router;

@@ -10,7 +10,12 @@ const orderSchema = mongoose.Schema(
         category: { type: String, required: true },
         qty: { type: Number, required: true },
         size: { type: String, required: true },
-        image: { type: String, required: true },
+        frontImage: { type: String }, 
+        backImage: { type: String },
+        frontDesign: { type: String },
+        backDesign: { type: String },
+        frontUpload: { type: String },
+        backUpload: { type: String },
         price: { type: Number, required: true },
         product: {
           type: mongoose.Schema.Types.ObjectId, 

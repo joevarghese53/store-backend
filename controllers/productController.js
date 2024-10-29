@@ -10,7 +10,10 @@ const bucket = storage.bucket(bucketName);
 const addProduct = asyncHandler(async (req, res) => {
   try {
     const { name, description, price, category, gender, offers, returnpolicy } = req.fields;
-    console.log(req.fields);
+    console.log("req fields",req.fields);
+    const { images } = req.fields;
+    const imagesArray = images ? JSON.parse(images) : [];
+    console.log("imagesArray",imagesArray);
     // Validation
     switch (true) {
       case !name:
@@ -29,7 +32,7 @@ const addProduct = asyncHandler(async (req, res) => {
         return res.json({ error: "Return Policy is required" });
     }
 
-    const product = new Product({ ...req.fields });
+    const product = new Product({ ...req.fields, images : imagesArray });
     await product.save();
     res.json(product);
     console.log(product);
@@ -42,6 +45,9 @@ const addProduct = asyncHandler(async (req, res) => {
 const updateProductDetails = asyncHandler(async (req, res) => {
   try {
     const { name, description, price, category, gender, offers, returnpolicy } = req.fields;
+    const { images } = req.fields;
+    const imagesArray = images ? JSON.parse(images) : [];
+    console.log("imagesArray",imagesArray);
 
     // Validation
     switch (true) {
@@ -63,13 +69,13 @@ const updateProductDetails = asyncHandler(async (req, res) => {
 
     const product = await Product.findByIdAndUpdate(
       req.params.id,
-      { ...req.fields },
+      { ...req.fields, images : imagesArray },
       { new: true }
     );
 
     await product.save();
 
-    res.json(product);
+    res.json({product, success: true});
   } catch (error) {
     console.error(error);
     res.status(400).json(error.message);
@@ -79,7 +85,7 @@ const updateProductDetails = asyncHandler(async (req, res) => {
 const removeProduct = asyncHandler(async (req, res) => {
   try {
     const product = await Product.findByIdAndDelete(req.params.id);
-    const imageUrl = product.image;
+    const imageUrl = product.frontImage;
     const fileName = imageUrl.split("/").pop();
     console.log(fileName);
     const file = bucket.file(fileName);

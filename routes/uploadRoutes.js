@@ -27,36 +27,58 @@ const fileFilter = (req, file, cb) => {
 };
 
 const upload = multer({ storage: multerStorage, fileFilter });
-const uploadSingleImage = upload.single("image");
+const uploadFields = upload.fields([
+  { name: "frontImage", maxCount: 1 },
+  { name: "backImage", maxCount: 1 },
+  { name: "frontDesign", maxCount: 1 },
+  { name: "backDesign", maxCount: 1 },
+  { name: "frontUpload", maxCount: 1 },
+  { name: "backUpload", maxCount: 1 },
+  { name: "images", maxCount: 10 } // For array of additional images
+]);
 
 router.post("/", (req, res) => {
-  uploadSingleImage(req, res, async (err) => {
+  uploadFields(req, res, async (err) => {
     if (err) {
       return res.status(400).send({ message: err.message });
-    } else if (!req.file) {
-      return res.status(400).send({ message: "No image file provided" });
+    } else if (!req.files) {
+      return res.status(400).send({ message: "No image files provided" });
     }
 
     try {
-      const blob = bucket.file(`${Date.now()}_${req.file.originalname}`);
-      const blobStream = blob.createWriteStream({
-        resumable: false,
-        contentType: req.file.mimetype,
-      });
+      const imageUrls = {};
 
-      blobStream.on("error", (error) => {
-        res.status(500).send({ message: error.message });
-      });
+      // Loop through each field in req.files
+      for (const [fieldName, fileArray] of Object.entries(req.files)) {
+        imageUrls[fieldName] = [];
 
-      blobStream.on("finish", () => {
-        const publicUrl = `https://storage.googleapis.com/${bucketName}/${blob.name}`;
-        res.status(200).send({
-          message: "Image uploaded successfully",
-          image: publicUrl,
-        });
-      });
+        // Process each file in the array
+        for (const file of fileArray) {
+          const blob = bucket.file(`${Date.now()}_${file.originalname}`);
+          const blobStream = blob.createWriteStream({
+            resumable: false,
+            contentType: file.mimetype,
+          });
 
-      blobStream.end(req.file.buffer);
+          await new Promise((resolve, reject) => {
+            blobStream.on("error", (error) => reject(error));
+            blobStream.on("finish", () => {
+              const publicUrl = `https://storage.googleapis.com/${bucketName}/${blob.name}`;
+              imageUrls[fieldName].push(publicUrl); // Push URL to array for this field
+              resolve();
+            });
+
+            blobStream.end(file.buffer);
+          });
+        }
+      }
+
+      console.log(imageUrls);
+
+      res.status(200).send({
+        message: "Images uploaded successfully",
+        imageUrls,
+      });
     } catch (error) {
       res.status(500).send({ message: error.message });
     }
@@ -64,3 +86,4 @@ router.post("/", (req, res) => {
 });
 
 export default router;
+

@@ -5,7 +5,12 @@ const { ObjectId } = mongoose.Schema;
 const customProductSchema = mongoose.Schema(
     {
         name: { type: String, required: true },
-        image: { type: String, required: true },
+        frontImage: { type: String, required: true },
+        backImage: { type: String, required: true },
+        frontDesign: { type: String, required: true },
+        backDesign: { type: String, required: true },
+        frontUpload: { type: String, required: true },
+        backUpload: { type: String, required: true },
         category: { type: ObjectId, ref: "Category", required: true }, // Category defined by the user
         description: { type: String, required: true },
         price: { type: Number, required: true, default: 0 },

@@ -19,7 +19,11 @@ const reviewSchema = mongoose.Schema(
 const productSchema = mongoose.Schema(
   {
     name: { type: String, required: true },
-    image: { type: String, required: true },
+    frontImage: { type: String},
+    backImage: { type: String},
+    frontDesign: { type: String},
+    backDesign: { type: String},
+    images: { type: Array},
     gender: { 
       type: String, 
       required: true, 

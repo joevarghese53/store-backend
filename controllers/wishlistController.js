@@ -81,4 +81,11 @@ const checkItemInWishlist = asyncHandler(async (req, res) => {
     }
 });
 
-export { getWishlist, addToWishlist, removeFromWishlist, checkItemInWishlist };
+const removeFromAllWishlist = asyncHandler(async (req, res) => {
+    const { productId } = req.params;
+    const wishlist = await Wishlist.updateMany({}, { $pull: { items: { productId: productId } } });
+    res.json({success: true});
+});
+
+
+export { getWishlist, addToWishlist, removeFromWishlist, checkItemInWishlist, removeFromAllWishlist };
