@@ -13,9 +13,10 @@ const generateToken = (res, userId) => {
     sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
     maxAge: 30 * 24 * 60 * 60 * 1000,
     path: '/', // Ensure the cookie is available throughout the site
-});
+  });
 
-console.log('Cookie set:', res.getHeader('Set-Cookie')); // Log the cookie header
+  console.log('JWT Token:', token);
+  console.log('Response headers:', res.getHeaders());
 
   return token;
 };
