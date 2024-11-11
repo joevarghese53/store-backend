@@ -7,7 +7,7 @@ const router = express.Router();
 
 // Initialize Google Cloud Storage
 const storage = new Storage();
-const bucketName = "tshirt-uploads";
+const bucketName = "tshirt-upload";
 const bucket = storage.bucket(bucketName);
 
 const multerStorage = multer.memoryStorage();
