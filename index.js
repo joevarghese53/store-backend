@@ -48,6 +48,9 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/payment", proxyRoutes); 
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/cproducts", cProductRoutes);
+app.use("/api/health", (req, res) => {
+  res.send("Server is running");
+});
 
 
 
