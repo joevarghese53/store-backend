@@ -32,7 +32,7 @@ router.route("/total-sales").get(calculateTotalSales);
 router.route("/total-sales-by-date").get(calcualteTotalSalesByDate);
 router.route("/total-products-sold").get(calculateTotalProductsSoldByDate);
 router.route("/:id").get(authenticate, findOrderById);
-router.route("/:id/pay").put(authenticate, markOrderAsPaid);
+router.route("/:id/markOrderAsPaid").put(authenticate, markOrderAsPaid);
 router
   .route("/:id/delivered")
   .put(authenticate, authorizeAdmin, markOrderAsDelivered);
