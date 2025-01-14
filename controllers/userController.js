@@ -4,6 +4,8 @@ import Tries from "../models/triesModel.js";
 import asyncHandler from "../middlewares/asyncHandler.js";
 import bcrypt from "bcryptjs";
 import createToken from "../utils/createToken.js";
+import crypto from "crypto";
+import nodemailer from "nodemailer";
 
 const createUser = asyncHandler(async (req, res) => {
   const { username, email, password } = req.body;
@@ -183,6 +185,82 @@ const updateUserById = asyncHandler(async (req, res) => {
   }
 });
 
+const generateResetPasswordLink = async (req, res) => {
+  const { email } = req.body;
+  try {
+      const user = await User.findOne({ email: email });
+      if (!user) {
+          return res.status(200).json({ message: "If a user with this email exists, a reset link will be sent." });
+      }
+      const resetToken = crypto.randomBytes(32).toString("hex");
+      user.resetPasswordToken = crypto.createHash("sha256").update(resetToken).digest("hex");
+      user.resetPasswordExpires = Date.now() + 30 * 60 * 1000; // 30 minutes
+      await user.save();
+
+      const resetUrl = `${process.env.FRONTEND_URL}/ResetPassword/${resetToken}`;
+
+      const transporter = nodemailer.createTransport({
+          service: 'gmail',
+          host: 'smtp.gmail.com',
+          port: 587,
+          secure: false, // true for 465, false for other ports
+          auth: {
+              user: process.env.EMAIL_ADDRESS, // Your Gmail email
+              pass: process.env.EMAIL_PASSWORD, // Your Gmail app password
+          },
+      });
+
+      // Email content
+      const mailOptions = {
+          from: `"Dgen Stores" <${process.env.EMAIL_ADDRESS}>`, // sender address
+          to: email, // recipient email from order
+          subject: 'Password Reset Request', // Subject line
+          html: `
+          <h1>Reset Your Password</h1>
+          <p>Click the link below to reset your password</p>
+          <a href="${resetUrl}">Reset Password</a>
+          <p>If you did not request a password reset, please ignore this email</p>
+      `,
+      };
+
+      // Send the email
+      let info = await transporter.sendMail(mailOptions);
+      console.log('Message sent: %s', info.messageId);
+      res.status(200).json({ message: "Password reset link sent to your email" });
+  }
+  catch (error) {
+      res.status(500).json({ message: error.message });
+  }
+}
+
+const resetPassword = async (req, res) => {
+  const { token, newPassword } = req.body;
+  try {
+
+      const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+      const user = await User.findOne({
+          resetPasswordToken: hashedToken,
+          resetPasswordExpires: { $gt: Date.now() },
+      });
+
+      if (!user) {
+          res.status(400);
+          throw new Error("Invalid or expired token");
+      }
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(newPassword, salt);
+      user.password = hashedPassword;
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpires = undefined;
+      await user.save();
+
+      res.status(200).json({ message: "Password reset successfully" });
+  }
+  catch (error) {
+      res.status(500).json({ message: error.message });
+  }
+}
+
 
 
 export {
@@ -194,5 +272,7 @@ export {
   updateCurrentUserProfile,
   deleteUserById,
   getUserById,
-  updateUserById
+  updateUserById,
+  generateResetPasswordLink, 
+  resetPassword
 };

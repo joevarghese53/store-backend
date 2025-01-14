@@ -10,6 +10,8 @@ import {
   deleteUserById,
   getUserById,
   updateUserById,
+  generateResetPasswordLink,
+  resetPassword
 } from "../controllers/userController.js";
 
 import { authenticate, authorizeAdmin } from "../middlewares/authMiddleware.js";
@@ -35,5 +37,13 @@ router
   .delete(authenticate, authorizeAdmin, deleteUserById)
   .get(authenticate, authorizeAdmin, getUserById)
   .put(authenticate, authorizeAdmin, updateUserById);
+
+router
+  .route("/resetPasswordLink")
+  .post(authenticate, generateResetPasswordLink)
+
+router
+  .route("/resetPassword")
+  .post(authenticate, resetPassword)
 
 export default router;
