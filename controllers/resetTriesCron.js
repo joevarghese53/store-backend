@@ -2,7 +2,7 @@ import cron from "node-cron";
 import Tries from "../models/triesModel.js";
 
 const resetFreeTries = () => {
-  cron.schedule("0 12 * * *", async () => {
+  cron.schedule("55 9 * * *", async () => {
     // Change "30 14 * * *" to your desired time (HH:mm in 24-hour format).
     console.log("Running reset of free tries...");
 
