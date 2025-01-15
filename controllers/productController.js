@@ -4,7 +4,7 @@ import Product from "../models/productModel.js";
 import { Storage } from "@google-cloud/storage";
 
 const storage = new Storage();
-const bucketName = "tshirt-uploads";
+const bucketName = "tshirt-upload";
 const bucket = storage.bucket(bucketName);
 
 const addProduct = asyncHandler(async (req, res) => {
@@ -85,17 +85,94 @@ const updateProductDetails = asyncHandler(async (req, res) => {
 const removeProduct = asyncHandler(async (req, res) => {
   try {
     const product = await Product.findByIdAndDelete(req.params.id);
-    const imageUrl = product.frontImage;
-    const fileName = imageUrl.split("/").pop();
-    console.log(fileName);
-    const file = bucket.file(fileName);
-    await file.delete();
-    res.json(product);
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    // Collect all image URLs to delete
+    const imageUrls = [
+      product.frontImage,
+      product.backImage,
+      product.frontDesign,
+      product.backDesign,
+      ...product.images,
+    ];
+
+    // Extract object names from URLs and delete them from GCP
+    const deletePromises = imageUrls.map((url) => {
+      const fileName = url.split('/').pop(); // Extract file name from URL
+      console.log('Deleting file:', fileName);
+      return storage.bucket(bucketName).file(fileName).delete().catch((err) => {
+        console.error(`Failed to delete ${fileName}:`, err.message);
+      });
+    });
+
+    await Promise.all(deletePromises);
+
+    res.json({ message: 'Product and associated images deleted successfully' });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Server error" });
+    console.error('Error deleting product:', error);
+    res.status(500).json({ error: 'Server error' });
   }
 });
+
+
+const removeProductImage = asyncHandler(async (req, res) => {
+  try {
+    const { product_id, image_url } = req.body;
+
+    // Validate request data
+    if (!product_id || !image_url) {
+      return res.status(400).json({ message: 'Product ID and image URL are required' });
+    }
+
+    // Find the product by ID
+    const product = await Product.findById(product_id);
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    // Check if the image URL exists in the product's images
+    const allImages = [
+      product.frontImage,
+      product.backImage,
+      product.frontDesign,
+      product.backDesign,
+      ...product.images,
+    ];
+
+    if (!allImages.includes(image_url)) {
+      return res.status(404).json({ message: 'Image URL not associated with the product' });
+    }
+
+    // Extract file name from the URL
+    const fileName = image_url.split('/').pop();
+
+    // Delete the image from GCP
+    try {
+      await storage.bucket(bucketName).file(fileName).delete();
+    } catch (err) {
+      console.error(`Failed to delete image from GCP: ${err.message}`);
+      return res.status(500).json({ message: 'Failed to delete image from storage' });
+    }
+
+    // Remove the image URL from the product's record
+    if (product.frontImage === image_url) product.frontImage = null;
+    if (product.backImage === image_url) product.backImage = null;
+    if (product.frontDesign === image_url) product.frontDesign = null;
+    if (product.backDesign === image_url) product.backDesign = null;
+    product.images = product.images.filter((url) => url !== image_url);
+
+    await product.save();
+
+    res.json({ message: 'Image deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting product image:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
 
 const fetchProducts = asyncHandler(async (req, res) => {
   try {
@@ -256,6 +333,7 @@ export {
   addProduct,
   updateProductDetails,
   removeProduct,
+  removeProductImage,
   fetchProducts,
   fetchProductById,
   fetchAllProducts,

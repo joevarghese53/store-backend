@@ -8,6 +8,7 @@ import {
   addProduct,
   updateProductDetails,
   removeProduct,
+  removeProductImage,
   fetchProducts,
   fetchProductById,
   fetchAllProducts,
@@ -29,6 +30,8 @@ router.route("/:id/reviews").post(authenticate, checkId, addProductReview);
 
 router.get("/top", fetchTopProducts);
 router.get("/new", fetchNewProducts);
+
+router.delete("/delete-image", removeProductImage);
 
 router
   .route("/:id")
