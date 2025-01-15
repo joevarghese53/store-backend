@@ -40,10 +40,10 @@ router
 
 router
   .route("/resetPasswordLink")
-  .post(authenticate, generateResetPasswordLink)
+  .post(generateResetPasswordLink)
 
 router
   .route("/resetPassword")
-  .post(authenticate, resetPassword)
+  .post(resetPassword)
 
 export default router;
