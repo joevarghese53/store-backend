@@ -302,12 +302,12 @@ const sendOrderConfirmationEmail = async (order, paymentData) => {
 
     // Email content
     const mailOptions = {
-      from: `"Dgen Stores" <${process.env.EMAIL_ADDRESS}>`, // sender address
+      from: `"JayVee Apparels" <${process.env.EMAIL_ADDRESS}>`, // sender address
       to: order.user.email, // recipient email from order
       subject: 'Order Confirmed', // Subject line
       html: `
     <div style="font-family: Arial, sans-serif; border: 1px solid #ddd; padding: 20px; max-width: 600px; margin: auto;">
-      <h2 style="background-color: #2874F0; color: white; padding: 10px; text-align: center;">Dgen Stores</h2>
+      <h2 style="background-color: #2874F0; color: white; padding: 10px; text-align: center;">JayVee Apparels</h2>
       <h3>Hi ${order.user.username},</h3>
       <p>Your order has been successfully placed.</p>
       <p><strong>Order ID:</strong> ${order._id}</p>
@@ -320,7 +320,7 @@ const sendOrderConfirmationEmail = async (order, paymentData) => {
       <hr style="border-top: 1px solid #ddd;">
       <h4>Thank you for shopping with us!</h4>
       <p>We will notify you once your item is shipped. Stay tuned for more updates via mail at ${order.user.email}.</p>
-      <p>Best Regards,<br>Dgen Team</p>
+      <p>Best Regards,<br>JayVee Apparels Team</p>
     </div>
   `,
     };
@@ -412,12 +412,12 @@ const sendOrderOutForDeliveryEmail = async (order) => {
 
     // Email content
     const mailOptions = {
-      from: `"Dgen Stores" <${process.env.EMAIL_ADDRESS}>`, // sender address
+      from: `"JayVee Stores" <${process.env.EMAIL_ADDRESS}>`, // sender address
       to: order.user.email, // recipient email from order
       subject: 'Order Out for Delivery', // Subject line
       html: `
     <div style="font-family: Arial, sans-serif; border: 1px solid #ddd; padding: 20px; max-width: 600px; margin: auto;">
-      <h2 style="background-color: #2874F0; color: white; padding: 10px; text-align: center;">Dgen Stores</h2>
+      <h2 style="background-color: #2874F0; color: white; padding: 10px; text-align: center;">JayVee Stores</h2>
       <h3>Hi ${order.user.username},</h3>
       <p>Your order is now out for delivery.</p>
       <p><strong>Order ID:</strong> ${order._id}</p>
@@ -428,7 +428,7 @@ const sendOrderOutForDeliveryEmail = async (order) => {
       <hr style="border-top: 1px solid #ddd;">
       <h4>Thank you for shopping with us!</h4>
       <p>We hope you enjoy your purchase! Feel free to reach out at ${customercaremail} if you have any questions. Stay updated through email at ${order.user.email}.</p>
-      <p>Best Regards,<br>Dgen Team</p>
+      <p>Best Regards,<br>JayVee Apparels Team</p>
     </div>
   `,
     };

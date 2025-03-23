@@ -228,7 +228,7 @@ const generateResetPasswordLink = async (req, res) => {
 
       // Email content
       const mailOptions = {
-          from: `"Dgen Stores" <${process.env.EMAIL_ADDRESS}>`, // sender address
+          from: `"JayVee Stores" <${process.env.EMAIL_ADDRESS}>`, // sender address
           to: email, // recipient email from order
           subject: 'Password Reset Request', // Subject line
           html: `
