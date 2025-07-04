@@ -5,9 +5,6 @@ import { markOrderAsPaid } from "./orderController.js";
 
 const initiatePayment = asyncHandler(async (req, res) => {
     try {
-        console.log("Initiate Payment");
-        console.log(req.body);
-
         const merchantTransaction_Id = req.body.merchantTransactionId; 
         const data = {
             merchantId: process.env.PHONEPE_MERCHANT_ID,

@@ -20,6 +20,7 @@ import wishlistRoutes from "./routes/wishlistRoutes.js";
 import cProductRoutes from "./routes/cProductRoutes.js";
 import resetFreeTries from "./controllers/resetTriesCron.js";
 import triesRoutes from "./routes/triesRoutes.js";
+import generateImageRoutes from "./routes/generateImageRoutes.js";
 
 
 dotenv.config();
@@ -53,6 +54,7 @@ app.use("/api/payment", proxyRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/cproducts", cProductRoutes);
 app.use("/api/tries", triesRoutes);
+app.use("/api/generate-image", generateImageRoutes);
 app.use("/api/health", (req, res) => {
   res.send("Server is running");
 });
