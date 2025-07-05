@@ -1,11 +1,25 @@
 //productController.js
 import asyncHandler from "../middlewares/asyncHandler.js";
 import Product from "../models/productModel.js";
-import { Storage } from "@google-cloud/storage";
+import AWS from "aws-sdk";
+import dotenv from "dotenv";
+dotenv.config(); 
 
-const storage = new Storage();
-const bucketName = "tshirt-upload";
-const bucket = storage.bucket(bucketName);
+// R2 Configuration (same as your upload logic)
+const s3 = new AWS.S3({
+  endpoint: process.env.CLOUDFLARE_R2_ENDPOINT,
+  accessKeyId: process.env.CLOUDFLARE_ACCESS_KEY_ID,
+  secretAccessKey: process.env.CLOUDFLARE_SECRET_ACCESS_KEY,
+  region: "auto",
+  signatureVersion: "v4",
+});
+
+const BUCKET_NAME = process.env.CLOUDFLARE_BUCKET_NAME;
+
+console.log("R2 Endpoint:", process.env.CLOUDFLARE_R2_ENDPOINT);
+console.log("R2 Access Key ID:", process.env.CLOUDFLARE_ACCESS_KEY_ID);
+console.log("R2 Secret Access Key:", process.env.CLOUDFLARE_SECRET_ACCESS_KEY);
+console.log("R2 Bucket Name:", process.env.CLOUDFLARE_BUCKET_NAME);
 
 const addProduct = asyncHandler(async (req, res) => {
   try {
@@ -96,23 +110,29 @@ const removeProduct = asyncHandler(async (req, res) => {
       product.frontDesign,
       product.backDesign,
       ...product.images,
-    ];
+    ].filter(Boolean); 
 
-    // Extract object names from URLs and delete them from GCP
     const deletePromises = imageUrls.map((url) => {
-      const fileName = url.split('/').pop(); // Extract file name from URL
-      console.log('Deleting file:', fileName);
-      return storage.bucket(bucketName).file(fileName).delete().catch((err) => {
-        console.error(`Failed to delete ${fileName}:`, err.message);
-      });
+      const fileName = url.split("/").pop(); // Extract file name
+      console.log("Deleting file:", fileName);
+
+      return s3
+        .deleteObject({
+          Bucket: BUCKET_NAME,
+          Key: fileName,
+        })
+        .promise()
+        .catch((err) => {
+          console.error(`Failed to delete ${fileName}:`, err.message);
+        });
     });
 
     await Promise.all(deletePromises);
 
-    res.json({ message: 'Product and associated images deleted successfully' });
+    res.json({ message: "Product and associated images deleted successfully from R2" });
   } catch (error) {
-    console.error('Error deleting product:', error);
-    res.status(500).json({ error: 'Server error' });
+    console.error("Error deleting product:", error);
+    res.status(500).json({ error: "Server error" });
   }
 });
 
@@ -121,18 +141,15 @@ const removeProductImage = asyncHandler(async (req, res) => {
   try {
     const { product_id, image_url } = req.body;
 
-    // Validate request data
     if (!product_id || !image_url) {
-      return res.status(400).json({ message: 'Product ID and image URL are required' });
+      return res.status(400).json({ message: "Product ID and image URL are required" });
     }
 
-    // Find the product by ID
     const product = await Product.findById(product_id);
     if (!product) {
-      return res.status(404).json({ message: 'Product not found' });
+      return res.status(404).json({ message: "Product not found" });
     }
 
-    // Check if the image URL exists in the product's images
     const allImages = [
       product.frontImage,
       product.backImage,
@@ -142,21 +159,26 @@ const removeProductImage = asyncHandler(async (req, res) => {
     ];
 
     if (!allImages.includes(image_url)) {
-      return res.status(404).json({ message: 'Image URL not associated with the product' });
+      return res.status(404).json({ message: "Image URL not associated with the product" });
     }
 
-    // Extract file name from the URL
-    const fileName = image_url.split('/').pop();
+    // ✅ Extract file name from the URL
+    const fileName = image_url.split("/").pop();
 
-    // Delete the image from GCP
+    // ✅ Delete from Cloudflare R2
     try {
-      await storage.bucket(bucketName).file(fileName).delete();
+      await s3
+        .deleteObject({
+          Bucket: BUCKET_NAME,
+          Key: fileName,
+        })
+        .promise();
     } catch (err) {
-      console.error(`Failed to delete image from GCP: ${err.message}`);
-      return res.status(500).json({ message: 'Failed to delete image from storage' });
+      console.error("Failed to delete from R2:", err.message);
+      return res.status(500).json({ message: "Failed to delete image from R2" });
     }
 
-    // Remove the image URL from the product's record
+    // ✅ Update product record
     if (product.frontImage === image_url) product.frontImage = null;
     if (product.backImage === image_url) product.backImage = null;
     if (product.frontDesign === image_url) product.frontDesign = null;
@@ -165,10 +187,10 @@ const removeProductImage = asyncHandler(async (req, res) => {
 
     await product.save();
 
-    res.json({ message: 'Image deleted successfully' });
+    res.json({ message: "Image deleted successfully from Cloudflare R2" });
   } catch (error) {
-    console.error('Error deleting product image:', error);
-    res.status(500).json({ error: 'Server error' });
+    console.error("Error deleting product image:", error);
+    res.status(500).json({ error: "Server error" });
   }
 });
 
