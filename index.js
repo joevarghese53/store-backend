@@ -21,7 +21,7 @@ import cProductRoutes from "./routes/cProductRoutes.js";
 import resetFreeTries from "./controllers/resetTriesCron.js";
 import triesRoutes from "./routes/triesRoutes.js";
 import generateImageRoutes from "./routes/generateImageRoutes.js";
-
+import emailOtpRoutes from "./routes/emailOtpRoutes.js";
 
 dotenv.config();
 const port = process.env.PORT || 5000;
@@ -55,6 +55,7 @@ app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/cproducts", cProductRoutes);
 app.use("/api/tries", triesRoutes);
 app.use("/api/generate-image", generateImageRoutes);
+app.use("/api/email-otp", emailOtpRoutes);
 app.use("/api/health", (req, res) => {
   res.send("Server is running");
 });
