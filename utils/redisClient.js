@@ -5,7 +5,6 @@ import { createClient } from 'redis';
 // Ensure that the environment variables are loaded
 const redisClient = createClient({
   url: process.env.REDIS_URL,
-  token: process.env.REDIS_TOKEN,
 });
 
 redisClient.on('error', (err) => console.error('Redis error:', err));
