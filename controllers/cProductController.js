@@ -1,6 +1,20 @@
 // controllers/cProductController.js
 import cProduct from "../models/cProductModel.js";
 import asyncHandler from "../middlewares/asyncHandler.js";
+import AWS from "aws-sdk";
+import dotenv from "dotenv";
+dotenv.config(); 
+
+// R2 Config
+const s3 = new AWS.S3({
+  endpoint: process.env.CLOUDFLARE_R2_ENDPOINT,
+  accessKeyId: process.env.CLOUDFLARE_ACCESS_KEY_ID,
+  secretAccessKey: process.env.CLOUDFLARE_SECRET_ACCESS_KEY,
+  region: "auto",
+  signatureVersion: "v4",
+});
+
+const BUCKET_NAME = process.env.CLOUDFLARE_BUCKET_NAME;
 
 const addToCProducts = asyncHandler(async (req, res) => {
 
@@ -87,6 +101,35 @@ const deleteCProduct = asyncHandler(async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
+        // Extract image URLs from the product to delete
+    const productToDelete = cProductContainer.customProducts[productIndex];
+
+    const imageUrls = [
+      productToDelete.frontImage,
+      productToDelete.backImage,
+      productToDelete.frontDesign,
+      productToDelete.backDesign,
+      ...(productToDelete.images || []),
+    ].filter(Boolean); // remove null/undefined
+
+    // Delete images from Cloudflare R2
+    const deletePromises = imageUrls.map((url) => {
+      const fileName = url.split("/").pop();
+      console.log("Deleting file from R2:", fileName);
+
+      return s3
+        .deleteObject({
+          Bucket: BUCKET_NAME,
+          Key: fileName,
+        })
+        .promise()
+        .catch((err) => {
+          console.error(`Failed to delete ${fileName}:`, err.message);
+        });
+    });
+
+    await Promise.all(deletePromises);
+    
     cProductContainer.customProducts.splice(productIndex, 1); // Remove product from the array
 
     await cProductContainer.save();
