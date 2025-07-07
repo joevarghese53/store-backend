@@ -11,7 +11,8 @@ import {
   getUserById,
   updateUserById,
   generateResetPasswordLink,
-  resetPassword
+  resetPassword,
+  checkUserExists
 } from "../controllers/userController.js";
 
 import { authenticate, authorizeAdmin } from "../middlewares/authMiddleware.js";
@@ -45,5 +46,9 @@ router
 router
   .route("/resetPassword")
   .post(resetPassword)
+
+router
+  .route("/checkUserExists")
+  .post(checkUserExists)
 
 export default router;

@@ -280,6 +280,21 @@ const resetPassword = async (req, res) => {
   }
 }
 
+const checkUserExists = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    res.status(400);
+    throw new Error("Email is required");
+  }
+  const userExists = await User.findOne({ email });
+  if (userExists) {
+    res.status(200).json({ exists: true });
+  } 
+  else {
+    res.status(200).json({ exists: false });
+  }
+});
+
 
 
 export {
@@ -293,5 +308,6 @@ export {
   getUserById,
   updateUserById,
   generateResetPasswordLink,
-  resetPassword
+  resetPassword,
+  checkUserExists
 };
