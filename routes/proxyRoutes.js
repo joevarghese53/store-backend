@@ -9,6 +9,6 @@ checkPaymentStatus,
 } from "../controllers/proxyController.js";
 
 router.route("/initiate-payment").post(initiatePayment);
-router.route("/status").post(checkPaymentStatus);
+router.route("/status").post(checkPaymentStatus).get(checkPaymentStatus);
 
 export default router;
