@@ -1,25 +1,21 @@
 //productController.js
 import asyncHandler from "../middlewares/asyncHandler.js";
 import Product from "../models/productModel.js";
-import AWS from "aws-sdk";
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import dotenv from "dotenv";
 dotenv.config(); 
 
 // R2 Configuration (same as your upload logic)
-const s3 = new AWS.S3({
-  endpoint: process.env.CLOUDFLARE_R2_ENDPOINT,
-  accessKeyId: process.env.CLOUDFLARE_ACCESS_KEY_ID,
-  secretAccessKey: process.env.CLOUDFLARE_SECRET_ACCESS_KEY,
+const s3 = new S3Client({
   region: "auto",
-  signatureVersion: "v4",
+  endpoint: process.env.CLOUDFLARE_R2_ENDPOINT,
+  credentials: {
+    accessKeyId: process.env.CLOUDFLARE_ACCESS_KEY_ID,
+    secretAccessKey: process.env.CLOUDFLARE_SECRET_ACCESS_KEY,
+  },
 });
 
 const BUCKET_NAME = process.env.CLOUDFLARE_BUCKET_NAME;
-
-console.log("R2 Endpoint:", process.env.CLOUDFLARE_R2_ENDPOINT);
-console.log("R2 Access Key ID:", process.env.CLOUDFLARE_ACCESS_KEY_ID);
-console.log("R2 Secret Access Key:", process.env.CLOUDFLARE_SECRET_ACCESS_KEY);
-console.log("R2 Bucket Name:", process.env.CLOUDFLARE_BUCKET_NAME);
 
 const addProduct = asyncHandler(async (req, res) => {
   try {
@@ -112,19 +108,20 @@ const removeProduct = asyncHandler(async (req, res) => {
       ...product.images,
     ].filter(Boolean); 
 
-    const deletePromises = imageUrls.map((url) => {
+    const deletePromises = imageUrls.map(async (url) => {
       const fileName = url.split("/").pop(); // Extract file name
       console.log("Deleting file:", fileName);
 
-      return s3
-        .deleteObject({
-          Bucket: BUCKET_NAME,
-          Key: fileName,
-        })
-        .promise()
-        .catch((err) => {
-          console.error(`Failed to delete ${fileName}:`, err.message);
-        });
+      try {
+        await s3.send(
+          new DeleteObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: fileName,
+          })
+        );
+      } catch (err) {
+        console.error(`Failed to delete ${fileName}:`, err.message);
+      }
     });
 
     await Promise.all(deletePromises);
@@ -167,12 +164,12 @@ const removeProductImage = asyncHandler(async (req, res) => {
 
     // ✅ Delete from Cloudflare R2
     try {
-      await s3
-        .deleteObject({
+      await s3.send(
+        new DeleteObjectCommand({
           Bucket: BUCKET_NAME,
           Key: fileName,
         })
-        .promise();
+      );
     } catch (err) {
       console.error("Failed to delete from R2:", err.message);
       return res.status(500).json({ message: "Failed to delete image from R2" });

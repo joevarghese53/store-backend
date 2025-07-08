@@ -1,17 +1,18 @@
 // controllers/cProductController.js
 import cProduct from "../models/cProductModel.js";
 import asyncHandler from "../middlewares/asyncHandler.js";
-import AWS from "aws-sdk";
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import dotenv from "dotenv";
 dotenv.config(); 
 
 // R2 Config
-const s3 = new AWS.S3({
-  endpoint: process.env.CLOUDFLARE_R2_ENDPOINT,
-  accessKeyId: process.env.CLOUDFLARE_ACCESS_KEY_ID,
-  secretAccessKey: process.env.CLOUDFLARE_SECRET_ACCESS_KEY,
+const s3 = new S3Client({
   region: "auto",
-  signatureVersion: "v4",
+  endpoint: process.env.CLOUDFLARE_R2_ENDPOINT,
+  credentials: {
+    accessKeyId: process.env.CLOUDFLARE_ACCESS_KEY_ID,
+    secretAccessKey: process.env.CLOUDFLARE_SECRET_ACCESS_KEY,
+  },
 });
 
 const BUCKET_NAME = process.env.CLOUDFLARE_BUCKET_NAME;
@@ -113,19 +114,20 @@ const deleteCProduct = asyncHandler(async (req, res) => {
     ].filter(Boolean); // remove null/undefined
 
     // Delete images from Cloudflare R2
-    const deletePromises = imageUrls.map((url) => {
+    const deletePromises = imageUrls.map(async (url) => {
       const fileName = url.split("/").pop();
       console.log("Deleting file from R2:", fileName);
 
-      return s3
-        .deleteObject({
-          Bucket: BUCKET_NAME,
-          Key: fileName,
-        })
-        .promise()
-        .catch((err) => {
-          console.error(`Failed to delete ${fileName}:`, err.message);
-        });
+      try {
+        await s3.send(
+          new DeleteObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: fileName,
+          })
+        );
+      } catch (err) {
+        console.error(`Failed to delete ${fileName}:`, err.message);
+      }
     });
 
     await Promise.all(deletePromises);

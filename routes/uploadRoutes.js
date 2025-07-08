@@ -1,26 +1,22 @@
 import express from "express";
 import multer from "multer";
-import AWS from "aws-sdk";
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import path from "path";
 import dotenv from "dotenv";
 
 
 const router = express.Router();
-dotenv.config(); 
+dotenv.config();
 
 // ✅ Cloudflare R2 Config (S3-compatible)
-const s3 = new AWS.S3({
-  endpoint: process.env.CLOUDFLARE_R2_ENDPOINT, 
-  accessKeyId: process.env.CLOUDFLARE_ACCESS_KEY_ID,
-  secretAccessKey: process.env.CLOUDFLARE_SECRET_ACCESS_KEY,
+const s3 = new S3Client({
   region: "auto",
-  signatureVersion: "v4",
+  endpoint: process.env.CLOUDFLARE_R2_ENDPOINT,
+  credentials: {
+    accessKeyId: process.env.CLOUDFLARE_ACCESS_KEY_ID,
+    secretAccessKey: process.env.CLOUDFLARE_SECRET_ACCESS_KEY,
+  },
 });
-
-console.log("R2 Endpoint:", process.env.CLOUDFLARE_R2_ENDPOINT);
-console.log("R2 Access Key ID:", process.env.CLOUDFLARE_ACCESS_KEY_ID);
-console.log("R2 Secret Access Key:", process.env.CLOUDFLARE_SECRET_ACCESS_KEY);
-console.log("R2 Bucket Name:", process.env.CLOUDFLARE_BUCKET_NAME);
 
 const BUCKET_NAME = process.env.CLOUDFLARE_BUCKET_NAME;
 
@@ -66,16 +62,15 @@ router.post("/", (req, res) => {
         for (const file of fileArray) {
           const fileName = `${Date.now()}_${file.originalname}`;
 
-          await s3
-            .upload({
+          await s3.send(
+            new PutObjectCommand({
               Bucket: BUCKET_NAME,
               Key: fileName,
               Body: file.buffer,
               ContentType: file.mimetype,
-              ACL: "public-read", // Make publicly accessible
+              ACL: "public-read",
             })
-            .promise();
-
+          );
           const publicUrl = `${process.env.CLOUDFLARE_PUBLIC_URL}/${fileName}`;
           imageUrls[fieldName].push(publicUrl);
         }
