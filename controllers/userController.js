@@ -40,6 +40,7 @@ const createUser = asyncHandler(async (req, res) => {
     await newTries.save();
 
     res.status(201).json({
+      success: true,
       _id: newUser._id,
       username: newUser.username,
       email: newUser.email,
