@@ -28,16 +28,16 @@ const sendEmailOtp = async (req, res) => {
         });
 
         const mailOptions = {
-            from: `"JayVee Apparels" <${process.env.EMAIL_ADDRESS}>`, // sender address
+            from: `"Flow State" <${process.env.EMAIL_ADDRESS}>`, // sender address
             to: email, // recipient email from order
             subject: 'OTP Verification', // Subject line
             html: `
     <div style="font-family: Arial, sans-serif; border: 1px solid #ddd; padding: 20px; max-width: 600px; margin: auto;">
-      <h2 style="background-color: #2874F0; color: white; padding: 10px; text-align: center;">JayVee Apparels</h2>
+      <h2 style="background-color: #2874F0; color: white; padding: 10px; text-align: center;">Flow State</h2>
       <h3>Hi ${name},</h3>
       <p>This is your OTP for verifying your account. Valid for 5 minutes</p>
       <p><strong>OTP : </strong> ${otp}</p>
-      <p>Best Regards,<br>JayVee Apparels Team</p>
+      <p>Best Regards,<br>Flow State Team</p>
     </div>
   `,
         };
