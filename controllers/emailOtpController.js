@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import redisClient from '../utils/redisClient.js';
+import redisClient from '../config/redisClient.js';
 
 const sendEmailOtp = async (req, res) => {
     const { name, email } = req.body;

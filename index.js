@@ -30,10 +30,9 @@ connectDB();
 const app = express();
 const allowedOrigins = [
     'http://localhost:3000',
-    'https://store-frontend-41hipis43-joevarghese53s-projects.vercel.app', 
-    'https://store-frontend-git-main-joevarghese53s-projects.vercel.app',
     'https://store-frontend-joevarghese53s-projects.vercel.app',
-    'https://store-frontend-taupe.vercel.app'
+    'https://store-frontend-taupe.vercel.app',
+    'https://www.flowstateproject.in',
   ];
 
 app.use(cors({ origin: allowedOrigins, credentials: true }));

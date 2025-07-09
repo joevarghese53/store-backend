@@ -14,6 +14,6 @@ const router = express.Router();
 router.route("/").get(authenticate, getUserTries);
 router.route("/use").put(authenticate, useTry);
 router.route("/purchase-tries").post(authenticate, initiatePayment);
-router.route("/status").post(checkPaymentStatus);
+router.route("/status").post(checkPaymentStatus).get(checkPaymentStatus);
 
 export default router;
