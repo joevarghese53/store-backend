@@ -35,6 +35,9 @@ const sendEmailOtp = async (req, res) => {
       <h3>Hi ${name},</h3>
       <p>This is your OTP for verifying your account. Valid for 5 minutes</p>
       <p><strong>OTP : </strong> ${otp}</p>
+      <p>Please do not share this OTP with anyone.</p>
+      <p>Please do not reply to this email as it is sent from an unmonitored address.</p>
+      <p>For any queries, please contact us at <a href="mailto:info@flowstateproject.in"></p>
       <p>Best Regards,<br>Flow State Team</p>
     </div>
   `,

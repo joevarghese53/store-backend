@@ -238,6 +238,8 @@ const generateResetPasswordLink = async (req, res) => {
           <p>Click the link below to reset your password</p>
           <a href="${resetUrl}">Reset Password</a>
           <p>If you did not request a password reset, please ignore this email</p>
+          <p>Please do not reply to this email as it is sent from an unmonitored address.</p>
+          <p>For any queries, please contact us at <a href="mailto:info@flowstateproject.in"></p>
       `,
     };
 

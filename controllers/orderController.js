@@ -318,6 +318,8 @@ const sendOrderConfirmationEmail = async (order, paymentData) => {
       <hr style="border-top: 1px solid #ddd;">
       <h4>Thank you for shopping with us!</h4>
       <p>We will notify you once your item is shipped. Stay tuned for more updates via mail at ${order.user.email}.</p>
+      <p>Please do not reply to this email as it is sent from an unmonitored address.</p>
+      <p>For any queries, please contact us at <a href="mailto:info@flowstateproject.in"></p>
       <p>Best Regards,<br>Flow State Team</p>
     </div>
   `,
@@ -423,7 +425,9 @@ const sendOrderOutForDeliveryEmail = async (order) => {
       <p><strong>Delivery Address:</strong> ${order.shippingAddress.address}, ${order.shippingAddress.city} - ${order.shippingAddress.postalCode}</p>
       <hr style="border-top: 1px solid #ddd;">
       <h4>Thank you for shopping with us!</h4>
-      <p>We hope you enjoy your purchase! Feel free to reach out at ${customercaremail} if you have any questions. Stay updated through email at ${order.user.email}.</p>
+      <p>We hope you enjoy your purchase!</p>
+      <p>Please do not reply to this email as it is sent from an unmonitored address.</p>
+      <p>For any queries, please contact us at <a href="mailto:info@flowstateproject.in"></p>
       <p>Best Regards,<br>Flow State Team</p>
     </div>
   `,
