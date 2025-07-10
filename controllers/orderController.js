@@ -396,8 +396,6 @@ const markOrderAsOutForDelivery = async (req, res) => {
 
 const sendOrderOutForDeliveryEmail = async (order) => {
   try {
-    // Create a transporter
-    const customercaremail = process.env.CUSTOMER_CARE_EMAIL;
     console.log('Sending order out for delivery email...', order);
     const transporter = nodemailer.createTransport({
       host: 'smtp.zeptomail.in',
