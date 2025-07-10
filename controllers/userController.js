@@ -220,19 +220,17 @@ const generateResetPasswordLink = async (req, res) => {
     const resetUrl = `${process.env.FRONTEND_URL}/ResetPassword/${resetToken}`;
 
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      host: 'smtp.gmail.com',
+      host: 'smtp.zeptomail.in',
       port: 587,
-      secure: false, // true for 465, false for other ports
       auth: {
-        user: process.env.EMAIL_ADDRESS, // Your Gmail email
-        pass: process.env.EMAIL_PASSWORD, // Your Gmail app password
+        user: 'emailapikey',
+        pass: process.env.ZEPTO_API_KEY,
       },
     });
 
     // Email content
     const mailOptions = {
-      from: `"Flow State" <${process.env.EMAIL_ADDRESS}>`, // sender address
+      from: `"Flow State" <noreply@flowstateproject.in>`, // sender address
       to: email, // recipient email from order
       subject: 'Password Reset Request', // Subject line
       html: `
@@ -290,7 +288,7 @@ const checkUserExists = asyncHandler(async (req, res) => {
   const userExists = await User.findOne({ email });
   if (userExists) {
     res.status(200).json({ exists: true });
-  } 
+  }
   else {
     res.status(200).json({ exists: false });
   }

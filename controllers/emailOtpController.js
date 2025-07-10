@@ -17,20 +17,18 @@ const sendEmailOtp = async (req, res) => {
         await redisClient.setEx(`otp:${email}`, expiresIn, otp);
 
         const transporter = nodemailer.createTransport({
-            service: 'gmail',
-            host: 'smtp.gmail.com',
+            host: 'smtp.zeptomail.in',
             port: 587,
-            secure: false, // true for 465, false for other ports
             auth: {
-                user: process.env.EMAIL_ADDRESS, // Your Gmail email
-                pass: process.env.EMAIL_PASSWORD, // Your Gmail app password
+                user: 'emailapikey',
+                pass: process.env.ZEPTO_API_KEY,
             },
         });
 
         const mailOptions = {
-            from: `"Flow State" <${process.env.EMAIL_ADDRESS}>`, // sender address
+            from: `"Flow State" <noreply@flowstateproject.in>`,
             to: email, // recipient email from order
-            subject: 'OTP Verification', // Subject line
+            subject: 'OTP Verification',
             html: `
     <div style="font-family: Arial, sans-serif; border: 1px solid #ddd; padding: 20px; max-width: 600px; margin: auto;">
       <h2 style="background-color: #2874F0; color: white; padding: 10px; text-align: center;">Flow State</h2>

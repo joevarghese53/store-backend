@@ -32,7 +32,7 @@ function calcPrices(orderItems) {
 
   // Total price includes the price with tax and shipping charges
   const totalPrice = (
-    parseFloat(itemsPriceWithTax) + 
+    parseFloat(itemsPriceWithTax) +
     parseFloat(shippingPrice)
   ).toFixed(2);
 
@@ -233,7 +233,7 @@ const findOrderById = async (req, res) => {
   try {
     // Find the order by ID and populate the user, and the category name in products
     const order = await Order.findById(req.params.id).populate("user", "username email");
-      
+
     console.log('order fetched from db:', order);
 
     if (!order) {
@@ -242,7 +242,7 @@ const findOrderById = async (req, res) => {
     }
 
     // Transform the order to replace category ID with category name and keep only product ID
-   
+
 
     res.json(order);
   } catch (error) {
@@ -289,22 +289,20 @@ const sendOrderConfirmationEmail = async (order, paymentData) => {
     // Create a transporter
     console.log('Sending order confirmation email...', order);
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      host: 'smtp.gmail.com',
+      host: 'smtp.zeptomail.in',
       port: 587,
-      secure: false, // true for 465, false for other ports
       auth: {
-        user: process.env.EMAIL_ADDRESS, // Your Gmail email
-        pass: process.env.EMAIL_PASSWORD, // Your Gmail app password
+        user: 'emailapikey',
+        pass: process.env.ZEPTO_API_KEY,
       },
     });
 
 
     // Email content
     const mailOptions = {
-      from: `"Flow State" <${process.env.EMAIL_ADDRESS}>`, // sender address
-      to: order.user.email, // recipient email from order
-      subject: 'Order Confirmed', // Subject line
+      from: `"Flow State" <noreply@flowstateproject.in>`,
+      to: order.user.email,
+      subject: 'Order Confirmed',
       html: `
     <div style="font-family: Arial, sans-serif; border: 1px solid #ddd; padding: 20px; max-width: 600px; margin: auto;">
       <h2 style="background-color: #2874F0; color: white; padding: 10px; text-align: center;">Flow State</h2>
@@ -400,19 +398,17 @@ const sendOrderOutForDeliveryEmail = async (order) => {
     const customercaremail = process.env.CUSTOMER_CARE_EMAIL;
     console.log('Sending order out for delivery email...', order);
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      host: 'smtp.gmail.com',
+      host: 'smtp.zeptomail.in',
       port: 587,
-      secure: false, // true for 465, false for other ports
       auth: {
-        user: process.env.EMAIL_ADDRESS, // Your Gmail email
-        pass: process.env.EMAIL_PASSWORD, // Your Gmail app password
+        user: 'emailapikey',
+        pass: process.env.ZEPTO_API_KEY,
       },
     });
 
     // Email content
     const mailOptions = {
-      from: `"Flow State" <${process.env.EMAIL_ADDRESS}>`, // sender address
+      from: `"Flow State" <noreply@flowstateproject.in>`, // sender address
       to: order.user.email, // recipient email from order
       subject: 'Order Out for Delivery', // Subject line
       html: `
