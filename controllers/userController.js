@@ -3,9 +3,10 @@ import User from "../models/userModel.js";
 import Tries from "../models/triesModel.js";
 import asyncHandler from "../middlewares/asyncHandler.js";
 import bcrypt from "bcryptjs";
-import createToken from "../utils/createToken.js";
+import generateTokens from "../utils/createToken.js";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
+import jwt from "jsonwebtoken";
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -13,15 +14,13 @@ const createUser = asyncHandler(async (req, res) => {
   const { username, email, password } = req.body;
 
   if (!username || !email || !password) {
-    throw new Error("Please fill all the inputs.");
+    return res.status(400).json({ message: "Please fill all the inputs." });
   }
 
   const userExists = await User.findOne({ email });
   if (userExists) {
-    res.status(400).json({ message: "User with this email already exists." });
-    return;
+    return res.status(400).json({ message: "User with this email already exists." });
   }
-
 
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(password, salt);
@@ -29,12 +28,14 @@ const createUser = asyncHandler(async (req, res) => {
 
   try {
     await newUser.save();
-    createToken(res, newUser._id);
 
-    // Initialize free tries for the user
+    // Set tokens
+    const accessToken = generateTokens(res, newUser._id);
+
+    // Initialize free tries
     const newTries = new Tries({
       user: newUser._id,
-      freeTriesRemaining: 5, // Set initial number of free tries
+      freeTriesRemaining: 5,
       purchasedTriesRemaining: 0,
     });
     await newTries.save();
@@ -45,65 +46,84 @@ const createUser = asyncHandler(async (req, res) => {
       username: newUser.username,
       email: newUser.email,
       isAdmin: newUser.isAdmin,
+      accessToken,
     });
   } catch (error) {
-    res.status(400);
-    throw new Error("Invalid user data");
+    console.error(error);
+    res.status(500).json({ message: "Something went wrong. Please try again." });
   }
 });
-
 
 const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  // Check if email and password are provided
   if (!email || !password) {
     res.status(400);
     throw new Error("Please provide both email and password.");
   }
 
   const existingUser = await User.findOne({ email });
-
   if (!existingUser) {
-    res.status(401); // Unauthorized
+    res.status(401);
     throw new Error("Invalid email or password.");
   }
 
+  const isPasswordValid = await bcrypt.compare(password, existingUser.password);
+  if (!isPasswordValid) {
+    res.status(401);
+    throw new Error("Invalid email or password.");
+  }
 
-  if (existingUser) {
-    const isPasswordValid = await bcrypt.compare(
-      password,
-      existingUser.password
-    );
+  const accessToken = generateTokens(res, existingUser._id);
 
-    if (!isPasswordValid) {
-      res.status(401); // Unauthorized
-      throw new Error("Invalid email or password.");
-    }
+  res.status(200).json({
+    _id: existingUser._id,
+    username: existingUser.username,
+    email: existingUser.email,
+    isAdmin: existingUser.isAdmin,
+    accessToken, // return short-lived access token
+  });
+});
 
-    if (isPasswordValid) {
-      createToken(res, existingUser._id);
+const refreshAccessToken = asyncHandler(async (req, res) => {
+  console.log("Received refresh token request");
+  const token = req.cookies.refreshToken?.replace(/^"|"$/g, ""); // Remove leading/trailing quotes
+  console.log("🍪 All cookies:", req.cookies);
+  console.log("➡️ Refresh token received:", req.cookies.refreshToken);
 
-      res.status(201).json({
-        _id: existingUser._id,
-        username: existingUser.username,
-        email: existingUser.email,
-        isAdmin: existingUser.isAdmin,
-      });
-      return;
-    }
+  if (!token) {
+    res.status(401);
+    throw new Error("No refresh token provided");
+  }
+
+  try {
+    
+    console.log("Token about to verify:", token);
+    console.log("Secret used:", process.env.JWT_REFRESH_SECRET.slice(0, 10) + '...');
+    const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+    console.log("Decoded refresh token:", decoded);
+    const accessToken = jwt.sign({ userId: decoded.userId }, process.env.JWT_SECRET, {
+      expiresIn: "15m",
+    });
+
+    res.status(200).json({ accessToken });
+  } catch (err) {
+    res.status(403);
+    throw new Error(err.message || "Invalid refresh token");
   }
 });
 
 const logoutCurrentUser = asyncHandler(async (req, res) => {
-  res.cookie("jwt", "", {
-    httpOnly: true, // Corrected typo here
-    secure: process.env.NODE_ENV === 'production', // Ensure secure flag if in production
-    sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax', // Matching SameSite setting
-    expires: new Date(0), // Expire immediately
-    path: '/', // Ensure the path is the same as the original cookie
+  console.log("Logging out user, clearing refresh token cookie");
+  res.clearCookie('refreshToken', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
+    path: '/', // must match path used when setting the cookie
   });
-  console.log("Cookie cleared:", res.getHeader("Set-Cookie"));
+
+  console.log("Refresh token cleared:", res.getHeader("Set-Cookie"));
+
   res.status(200).json({ message: "Logged out successfully" });
 });
 
@@ -301,6 +321,7 @@ const checkUserExists = asyncHandler(async (req, res) => {
 export {
   createUser,
   loginUser,
+  refreshAccessToken,
   logoutCurrentUser,
   getAllUsers,
   getCurrentUserProfile,

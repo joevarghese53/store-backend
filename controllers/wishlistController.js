@@ -65,6 +65,9 @@ const removeFromWishlist = asyncHandler(async (req, res) => {
 });
 
 const checkItemInWishlist = asyncHandler(async (req, res) => {
+    if (!req.params.productId) {
+        return res.status(400).json({ message: 'Product ID is required.' });
+    }
     const { productId } = req.params;
     const wishlist = await Wishlist.findOne({ userId: req.user._id });
     if (wishlist) {

@@ -55,9 +55,6 @@ const getCart = asyncHandler(async (req, res) => {
 
 const addToCart = asyncHandler(async (req, res) => {
   const { productId, productType, quantity, size } = req.body;
-
-  console.log(req.body);
-
   // Check if required fields are provided
   if (!productId || !quantity || !productType || !size) {
     return res.status(400).json({ message: 'Product ID, quantity, size and product type are required.' });
@@ -76,7 +73,6 @@ const addToCart = asyncHandler(async (req, res) => {
       product = cProductDoc.customProducts.id(productId);
     }
   }
-  console.log("Product:", product);
 
   // Check if product exists
   if (!product) {
@@ -87,8 +83,6 @@ const addToCart = asyncHandler(async (req, res) => {
   let cart = await Cart.findOne({ userId: req.user._id });
 
   if (cart) {
-    // Check if the product is already in the cart
-    console.log('Cart found:', cart);
     const itemIndex = cart.items.findIndex(item =>
       item.productId.toString() === productId &&
       item.productType === productType &&
@@ -109,8 +103,7 @@ const addToCart = asyncHandler(async (req, res) => {
       items: [{ productId, productType, quantity, size }],
     });
   }
-  console.log('Saving cart:', cart);
-  // Save the cart
+
   await cart.save();
   res.status(201).json(cart);
 });

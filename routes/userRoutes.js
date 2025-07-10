@@ -2,6 +2,7 @@
 import express from "express";
 import {
   createUser,
+  refreshAccessToken,
   loginUser,
   logoutCurrentUser,
   getAllUsers,
@@ -26,6 +27,9 @@ router
 
 router.post("/auth", loginUser);
 router.post("/logout", logoutCurrentUser);
+
+router
+  .get("/refresh-token" , refreshAccessToken);
 
 router
   .route("/profile")

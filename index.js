@@ -22,6 +22,7 @@ import resetFreeTries from "./controllers/resetTriesCron.js";
 import triesRoutes from "./routes/triesRoutes.js";
 import generateImageRoutes from "./routes/generateImageRoutes.js";
 import emailOtpRoutes from "./routes/emailOtpRoutes.js";
+import errorHandler from './middlewares/errorHandler.js';
 
 dotenv.config();
 const port = process.env.PORT || 5000;
@@ -58,7 +59,7 @@ app.use("/api/email-otp", emailOtpRoutes);
 app.use("/api/health", (req, res) => {
   res.send("Server is running");
 });
-
+app.use(errorHandler);
 
 const __dirname = path.resolve();
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
