@@ -1,11 +1,16 @@
 import express from "express";
-const router = express.Router();
+import { createRateLimiter } from "../utils/rateLimit.js";
 import { sendEmailOtp, verifyEmailOtp } from "../controllers/emailOtpController.js";
 
-router.route("/send")
-    .post(sendEmailOtp)
+const router = express.Router();
+const otpLimiter = createRateLimiter({
+  windowMs: 60 * 1000, // 1 minute
+  max: 5,
+  message: "Too many OTP requests. Try again in a minute."
+});
 
-router.route("/verify")
-    .post(verifyEmailOtp) 
+router.post("/send", otpLimiter, sendEmailOtp);
+
+router.post("/verify", verifyEmailOtp);
 
 export default router;

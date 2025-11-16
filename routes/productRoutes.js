@@ -31,11 +31,11 @@ router.route("/:id/reviews").post(authenticate, checkId, addProductReview);
 router.get("/top", fetchTopProducts);
 router.get("/new", fetchNewProducts);
 
-router.delete("/delete-image", removeProductImage);
+router.delete("/delete-image", authenticate, authorizeAdmin, removeProductImage);
 
 router
   .route("/:id")
-  .get(fetchProductById)
+  .get(checkId, fetchProductById)
   .put(authenticate, authorizeAdmin, formidable(), updateProductDetails)
   .delete(authenticate, authorizeAdmin, removeProduct);
 

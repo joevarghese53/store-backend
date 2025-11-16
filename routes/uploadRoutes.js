@@ -3,6 +3,7 @@ import multer from "multer";
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import path from "path";
 import dotenv from "dotenv";
+import { authenticate, authorizeAdmin } from "../middlewares/authMiddleware.js";
 
 
 const router = express.Router();
@@ -48,7 +49,10 @@ const uploadFields = upload.fields([
   { name: "images", maxCount: 10 },
 ]);
 
-router.post("/", (req, res) => {
+router.post("/",
+  authenticate,
+  authorizeAdmin,
+   (req, res) => {
   uploadFields(req, res, async (err) => {
     if (err) return res.status(400).send({ message: err.message });
     if (!req.files) return res.status(400).send({ message: "No image files provided" });

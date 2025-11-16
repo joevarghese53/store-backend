@@ -10,18 +10,25 @@ const orderSchema = mongoose.Schema(
         category: { type: String, required: true },
         qty: { type: Number, required: true },
         size: { type: String, required: true },
-        frontImage: { type: String }, 
+        price: { type: Number, required: true },
+
+        frontImage: { type: String },
         backImage: { type: String },
         frontDesign: { type: String },
         backDesign: { type: String },
         frontUpload: { type: String },
         backUpload: { type: String },
-        price: { type: Number, required: true },
+
         product: {
-          type: mongoose.Schema.Types.ObjectId, 
+          type: mongoose.Schema.Types.ObjectId,
           refPath: 'orderItems.productType', // Dynamic reference based on productType
+          required: true
         },
-        productType: { type: String, required: true }, // Product type to distinguish between 'Product' and 'CustomProduct'
+        productType: {
+          type: String,
+          required: true,
+          enum: ["Product", "CustomProduct"], // or "cProduct" if that's your model name
+        },
       },
     ],
 
@@ -31,7 +38,7 @@ const orderSchema = mongoose.Schema(
       postalCode: { type: String, required: true },
       state: { type: String, required: true },
       country: { type: String, required: true },
-      phoneno: { type: Number, required: true },
+      phoneno: { type: String, required: true, match: [/^[6-9][0-9]{9}$/, "Invalid phone number"] },
     },
 
     paymentResult: {
@@ -68,50 +75,35 @@ const orderSchema = mongoose.Schema(
       default: 0.0,
     },
 
-    isPaid: {
-      type: Boolean,
-      required: true,
-      default: false,
+    status: {
+      type: String,
+      enum: [
+        "pending",
+        "paid",
+        "confirmed",
+        "shipped",
+        "outForDelivery",
+        "delivered",
+        "cancelled",
+        "refunded",
+      ],
+      default: "pending",
     },
 
     paidAt: {
       type: Date,
     },
 
-    isConfirmed: {
-      type: Boolean,
-      required: true,
-      default: false,
-    },
-
     confirmedAt: {
       type: Date,
-    },
-
-    isShipped: {
-      type: Boolean,
-      required: true,
-      default: false,
     },
 
     shippedAt: {
       type: Date,
     },
 
-    isOutForDelivery: {
-      type: Boolean,
-      required: true,
-      default: false,
-    },
-
     outForDeliveryAt: {
       type: Date,
-    },
-
-    isDelivered: {
-      type: Boolean,
-      required: true,
-      default: false,
     },
 
     deliveredAt: {
@@ -122,6 +114,9 @@ const orderSchema = mongoose.Schema(
     timestamps: true,
   }
 );
+
+orderSchema.index({ user: 1, createdAt: -1 });
+orderSchema.index({ status: 1, createdAt: -1 });
 
 const Order = mongoose.model("Order", orderSchema);
 export default Order;

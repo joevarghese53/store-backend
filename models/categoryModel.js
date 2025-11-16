@@ -1,13 +1,22 @@
 import mongoose from "mongoose";
 
-const categorySchema = new mongoose.Schema({
-  name: {
-    type: String,
-    trim: true,
-    required: true,
-    maxLength: 32,
-    unique: true,
+const categorySchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      trim: true,
+      required: true,
+      maxLength: 32,
+      unique: true,
+      lowercase: true
+    },
+    // Slug for URL-friendly category names
+    slug: {
+      type: String,
+      unique: true,
+      lowercase: true,
+    },
   },
-});
+  { timestamps: true });
 
 export default mongoose.model("Category", categorySchema);

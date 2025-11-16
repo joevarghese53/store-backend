@@ -1,13 +1,12 @@
 // index.js
-import path from "path";
 import express from "express";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 
-// // Utiles
 import connectDB from "./config/db.js";
-// import { APP_BUILD_MANIFEST } from "next/dist/shared/lib/constants.js";
+import {connectRedis} from "./config/redisClient.js"
+
 import userRoutes from "./routes/userRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
@@ -22,35 +21,31 @@ import resetFreeTries from "./controllers/resetTriesCron.js";
 import triesRoutes from "./routes/triesRoutes.js";
 import generateImageRoutes from "./routes/generateImageRoutes.js";
 import emailOtpRoutes from "./routes/emailOtpRoutes.js";
-import errorHandler from './middlewares/errorHandler.js';
+
+import {errorHandler, notFound } from './middlewares/errorHandler.js';
+import corsOptions from "./config/corsOptions.js";
+import helmet from "helmet";
 
 dotenv.config();
 const port = process.env.PORT || 5000;
 
-connectDB();
 const app = express();
-const allowedOrigins = [
-    'http://localhost:3000',
-    'https://store-frontend-joevarghese53s-projects.vercel.app',
-    'https://store-frontend-taupe.vercel.app',
-    'https://www.flowstateproject.in',
-  ];
+resetFreeTries();
 
-app.use(cors({ origin: allowedOrigins, credentials: true }));
+app.use(helmet)
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-resetFreeTries();
-
 app.use("/api/users", userRoutes);
-app.use("/api/category", categoryRoutes); 
+app.use("/api/category", categoryRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/shipping", shippingAddressRoutes);
-app.use("/api/orders", orderRoutes);  
-app.use("/api/payment", proxyRoutes); 
+app.use("/api/orders", orderRoutes);
+app.use("/api/payment", proxyRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/cproducts", cProductRoutes);
 app.use("/api/tries", triesRoutes);
@@ -59,10 +54,23 @@ app.use("/api/email-otp", emailOtpRoutes);
 app.use("/api/health", (req, res) => {
   res.send("Server is running");
 });
+
+app.use(notFound)
 app.use(errorHandler);
 
-const __dirname = path.resolve();
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+const startServer = async () => {
+  try {
+    await connectDB();
+    await connectRedis();
 
-app.listen(port, () => console.log(`Server running on port: ${port}`));
+    app.listen(port, () => {
+      console.log(`🚀 Server running on port ${port}`);
+    });
+  } catch (err) {
+    console.error("❌ Server failed to start due to DB/Redis issue.");
+    process.exit(1);
+  }
+};
+
+startServer();
 

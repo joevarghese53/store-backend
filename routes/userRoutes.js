@@ -29,7 +29,7 @@ router.post("/auth", loginUser);
 router.post("/logout", logoutCurrentUser);
 
 router
-  .get("/refresh-token" , refreshAccessToken);
+  .post("/refresh-token" , refreshAccessToken);
 
 router
   .route("/profile")
@@ -37,11 +37,6 @@ router
   .put(authenticate, updateCurrentUserProfile);
 
 // ADMIN ROUTES 👇
-router
-  .route("/:id")
-  .delete(authenticate, authorizeAdmin, deleteUserById)
-  .get(authenticate, authorizeAdmin, getUserById)
-  .put(authenticate, authorizeAdmin, updateUserById);
 
 router
   .route("/resetPasswordLink")
@@ -54,5 +49,11 @@ router
 router
   .route("/checkUserExists")
   .post(checkUserExists)
+
+router
+  .route("/:id")
+  .delete(authenticate, authorizeAdmin, deleteUserById)
+  .get(authenticate, authorizeAdmin, getUserById)
+  .put(authenticate, authorizeAdmin, updateUserById);
 
 export default router;

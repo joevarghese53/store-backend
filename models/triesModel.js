@@ -6,6 +6,7 @@ const triesSchema = mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "User", // Reference to the User model
             required: true,
+            unique: true
         },
         freeTriesRemaining: {
             type: Number,

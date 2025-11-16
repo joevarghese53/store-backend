@@ -4,6 +4,7 @@ const { ObjectId } = mongoose.Schema;
 
 const customProductSchema = mongoose.Schema(
     {
+        userId: { type: ObjectId, ref: 'User', required: true }, // Reference to the User model
         name: { type: String, required: true },
         frontImage: { type: String, required: true },
         backImage: { type: String, required: true },
@@ -13,22 +14,16 @@ const customProductSchema = mongoose.Schema(
         backUpload: { type: String, required: true },
         category: { type: ObjectId, ref: "Category", required: true }, // Category defined by the user
         description: { type: String, required: true },
-        price: { type: Number, required: true, default: 0 },
-        countInStock: { type: Number, required: true, default: 0 },
-        offers: { type: String, required: true },
-        returnpolicy: { type: String, required: true },
+        price: { type: Number, required: true, min: 0 },
+        countInStock: { type: Number, required: true, min: 0, default: 0 },
+        offers: { type: String, default: "" },
+        returnpolicy: { type: String, default: "" },
     },
     { timestamps: true }
 );
 
-const cProductSchema = mongoose.Schema(
-    {
-        userId: { type: ObjectId, ref: 'User', required: true }, // Reference to the User model
-        customProducts: [customProductSchema], // Array of custom products specific to the user
-    },
-    { timestamps: true }
-);
+customProductSchema.index({ userId: 1, createdAt: -1 });
 
-const cProduct = mongoose.model('cProduct', cProductSchema);
+const customProduct = mongoose.model('customProduct', customProductSchema);
 
-export default cProduct;
+export default customProduct;

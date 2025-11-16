@@ -2,93 +2,139 @@
 import Wishlist from "../models/wishlistModel.js";
 import asyncHandler from "../middlewares/asyncHandler.js";
 
+// @desc    Get current user's wishlist
+// @route   GET /api/wishlist
+// @access  Private
 const getWishlist = asyncHandler(async (req, res) => {
-    const wishlist = await Wishlist.findOne({ userId: req.user._id }).populate({
-        path: 'items.productId',
-        populate: {
-            path: 'category', // Populate category field inside productId
-        }
+  const wishlist = await Wishlist.findOne({ userId: req.user._id }).populate({
+    path: "items.productId",
+    populate: {
+      path: "category",
+    },
+  });
+
+  if (!wishlist) {
+    // Return an empty list instead of 404 so frontend can handle it easily
+    return res.json({
+      userId: req.user._id,
+      items: [],
     });
+  }
 
-    console.log(wishlist);
-    if (!wishlist) {
-        return res.status(404).json({ message: 'Wishlist not found' });
-    }
-    const transformedWishlist = wishlist.toObject();  // Convert Mongoose document to plain JS object
-    res.json(transformedWishlist);
+  res.json(wishlist.toObject());
 });
 
-
-
+// @desc    Add product to wishlist
+// @route   POST /api/wishlist
+// @access  Private
 const addToWishlist = asyncHandler(async (req, res) => {
-    const { productId } = req.body;
-    if (!productId) {
-        return res.status(400).json({ message: 'Product ID is required.' });
+  const { productId } = req.body;
+
+  if (!productId) {
+    res.status(400);
+    throw new Error("Product ID is required.");
+  }
+
+  let wishlist = await Wishlist.findOne({ userId: req.user._id });
+
+  if (!wishlist) {
+    // Create wishlist if user doesn't have one yet
+    wishlist = new Wishlist({
+      userId: req.user._id,
+      items: [{ productId }],
+    });
+  } else {
+    const itemExists = wishlist.items.some(
+      (item) => item.productId.toString() === productId
+    );
+
+    if (itemExists) {
+      res.status(400);
+      throw new Error("Product is already in the wishlist.");
     }
-    console.log(`Adding productId: ${productId} `);
 
-    let wishlist = await Wishlist.findOne({ userId: req.user._id });
+    wishlist.items.push({ productId });
+  }
 
-    if (wishlist) {
-            const itemExists = wishlist.items.some(item => item.productId.toString() === productId);
-            if (itemExists) {
-                return res.status(400).json({ message: 'Product is already in the wishlist.' });
-            }
-            console.log(`Adding item to wishlist: ${productId}`);
-            wishlist.items.push({ productId });
-            console.log(wishlist);
-      
-    } else {
-        console.log(`Wishlist not found, creating a new wishlist`);
-        wishlist = new Wishlist({
-            userId: req.user._id,
-            items: [{ productId }],
-        });
-        console.log(wishlist);
-    }
-
-    await wishlist.save();
-    res.status(201).json(wishlist);
+  const savedWishlist = await wishlist.save();
+  res.status(201).json(savedWishlist);
 });
 
+// @desc    Remove one product from current user's wishlist
+// @route   DELETE /api/wishlist/:productId
+// @access  Private
 const removeFromWishlist = asyncHandler(async (req, res) => {
-    const { productId } = req.params;
-    const wishlist = await Wishlist.findOne({ userId: req.user._id });
+  const { productId } = req.params;
 
-    if (wishlist) {
-        wishlist.items = wishlist.items.filter(item => item.productId != productId);
-        await wishlist.save();
-        res.json(wishlist);
-    } else {
-        res.status(404).json({ message: 'Wishlist not found' });
-    }
+  const wishlist = await Wishlist.findOne({ userId: req.user._id });
+
+  if (!wishlist) {
+    res.status(404);
+    throw new Error("Wishlist not found");
+  }
+
+  const originalLength = wishlist.items.length;
+
+  wishlist.items = wishlist.items.filter(
+    (item) => item.productId.toString() !== productId
+  );
+
+  if (wishlist.items.length === originalLength) {
+    // Nothing was removed
+    res.status(404);
+    throw new Error("Product not found in wishlist");
+  }
+
+  await wishlist.save();
+  res.json(wishlist);
 });
 
+// @desc    Check if a product is in current user's wishlist
+// @route   GET /api/wishlist/:productId
+// @access  Private
 const checkItemInWishlist = asyncHandler(async (req, res) => {
-    if (!req.params.productId) {
-        return res.status(400).json({ message: 'Product ID is required.' });
-    }
-    const { productId } = req.params;
-    const wishlist = await Wishlist.findOne({ userId: req.user._id });
-    if (wishlist) {
-        const itemExists = wishlist.items.some(item => item.productId.toString() === productId);
-        if (itemExists) {
-            res.json({ exists: itemExists });
-        }
-        else {
-            res.json({ exists: false });
-        }
+  const { productId } = req.params;
 
-    } else {
-        res.json({ exists: false });
-    }
+  if (!productId) {
+    res.status(400);
+    throw new Error("Product ID is required.");
+  }
+
+  const wishlist = await Wishlist.findOne({ userId: req.user._id });
+
+  if (!wishlist) {
+    return res.json({ exists: false });
+  }
+
+  const itemExists = wishlist.items.some(
+    (item) => item.productId.toString() === productId
+  );
+
+  res.json({ exists: itemExists });
 });
 
+// @desc    Remove a product from all users' wishlists (admin)
+// @route   DELETE /api/wishlist/all/:productId
+// @access  Admin
 const removeFromAllWishlist = asyncHandler(async (req, res) => {
-    const { productId } = req.params;
-    const wishlist = await Wishlist.updateMany({}, { $pull: { items: { productId: productId } } });
-    res.json({success: true});
+  const { productId } = req.params;
+
+  await Wishlist.updateMany(
+    {},
+    {
+      $pull: {
+        items: { productId },
+      },
+    }
+  );
+
+  res.json({ success: true });
 });
 
-
-export { getWishlist, addToWishlist, removeFromWishlist, checkItemInWishlist, removeFromAllWishlist };
+export {
+  getWishlist,
+  addToWishlist,
+  removeFromWishlist,
+  checkItemInWishlist,
+  removeFromAllWishlist,
+};

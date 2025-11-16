@@ -9,13 +9,13 @@ router.route("/")
   .post(authenticate, addToCart)
   .put(authenticate, updateCartItem);
 
-router.route("/:productId")
-  .delete(authenticate, removeFromCart)
-  
-router.route("/all/:productId")
-  .delete(authenticate, removeAllOfProductFromCart)
+router.route("/allCart/:id")
+  .delete(authenticate, authorizeAdmin, removeAllOfProductFromAllOfCart);
 
-router.route("/allCart/:productId")
-  .delete(authenticate, authorizeAdmin, removeAllOfProductFromAllOfCart)
+router.route("/all/:id")
+  .delete(authenticate, removeAllOfProductFromCart);
+
+router.route("/:id")
+  .delete(authenticate, removeFromCart);
 
 export default router;

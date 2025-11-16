@@ -1,73 +1,83 @@
+// proxyController.js
 import axios from "axios";
 import crypto from "crypto";
 import asyncHandler from "../middlewares/asyncHandler.js";
 import { markOrderAsPaid } from "./orderController.js";
 
-// Initiate Payment
+// @desc    Initiate PhonePe payment
+// @route   POST /api/payment/initiate-payment
+// @access  Private
 const initiatePayment = asyncHandler(async (req, res) => {
-  try {
-    const {
-      merchantTransactionId,
-      customerUserId,
-      amount,
-      name,
-    } = req.body;
+  const { merchantTransactionId, customerUserId, amount, name } = req.body;
 
-    const merchantId = process.env.PHONEPE_MERCHANT_ID;
-    const redirectUrl = `${process.env.BACKEND_URL}/api/payment/status?id=${merchantTransactionId}`;
-
-    const data = {
-      merchantId,
-      merchantTransactionId,
-      merchantUserId: customerUserId,
-      amount,
-      name,
-      redirectUrl,
-      redirectMode: "POST",
-      paymentInstrument: {
-        type: "PAY_PAGE",
-      },
-    };
-
-    const payload = JSON.stringify(data);
-    const payloadMain = Buffer.from(payload).toString("base64");
-    const string = payloadMain + "/pg/v1/pay" + process.env.PHONEPE_SALT_KEY;
-    const sha256 = crypto.createHash("sha256").update(string).digest("hex");
-    const checksum = sha256 + "###" + process.env.PHONEPE_SALT_INDEX;
-
-    const url = `${process.env.PHONEPE_API_BASE_URL}/pg/v1/pay`;
-
-    const options = {
-      method: "POST",
-      url,
-      headers: {
-        accept: "application/json",
-        "Content-Type": "application/json",
-        "X-VERIFY": checksum,
-      },
-      data: {
-        request: payloadMain,
-      },
-    };
-
-    const response = await axios(options);
-    return res.json(response.data);
-  } catch (error) {
-    console.error("Initiate payment error:", error.message);
-    return res.status(500).json({ success: false, message: "Payment initiation failed" });
+  if (!merchantTransactionId || !customerUserId || !amount || !name) {
+    res.status(400);
+    throw new Error("merchantTransactionId, customerUserId, amount and name are required");
   }
+
+  const merchantId = process.env.PHONEPE_MERCHANT_ID;
+  const redirectUrl = `${process.env.BACKEND_URL}/api/payment/status?id=${merchantTransactionId}`;
+
+  const data = {
+    merchantId,
+    merchantTransactionId,
+    merchantUserId: customerUserId,
+    amount,                // expect in paise, eg 10000 = ₹100
+    name,
+    redirectUrl,
+    redirectMode: "POST",
+    paymentInstrument: {
+      type: "PAY_PAGE",
+    },
+  };
+
+  const payload = JSON.stringify(data);
+  const payloadMain = Buffer.from(payload).toString("base64");
+  const stringToSign = payloadMain + "/pg/v1/pay" + process.env.PHONEPE_SALT_KEY;
+  const sha256 = crypto.createHash("sha256").update(stringToSign).digest("hex");
+  const checksum = `${sha256}###${process.env.PHONEPE_SALT_INDEX}`;
+
+  const url = `${process.env.PHONEPE_API_BASE_URL}/pg/v1/pay`;
+
+  const options = {
+    method: "POST",
+    url,
+    headers: {
+      accept: "application/json",
+      "Content-Type": "application/json",
+      "X-VERIFY": checksum,
+    },
+    data: {
+      request: payloadMain,
+    },
+  };
+
+  const response = await axios(options);
+
+  // PhonePe errors will be handled by your global errorHandler if axios throws
+  res.status(200).json(response.data);
 });
 
-// Check Payment Status
+// @desc    PhonePe redirect webhook-style status check
+// @route   GET /api/payment/status?id=merchantTransactionId
+// @access  Public (called by PhonePe / user redirect)
 const checkPaymentStatus = asyncHandler(async (req, res) => {
-  try {
-    const merchantTransactionId = req.query.id;
-    const retryCount = parseInt(req.query.retry || '0', 10);
-    const merchantId = process.env.PHONEPE_MERCHANT_ID;
+  const merchantTransactionId = req.query.id;
+  const retryCount = parseInt(req.query.retry || "0", 10);
+  const merchantId = process.env.PHONEPE_MERCHANT_ID;
 
-    const string = `/pg/v1/status/${merchantId}/${merchantTransactionId}` + process.env.PHONEPE_SALT_KEY;
-    const sha256 = crypto.createHash("sha256").update(string).digest("hex");
-    const checksum = sha256 + "###" + process.env.PHONEPE_SALT_INDEX;
+  if (!merchantTransactionId) {
+    res.status(400);
+    throw new Error("Missing merchantTransactionId (id query param)");
+  }
+
+  try {
+    const stringToSign =
+      `/pg/v1/status/${merchantId}/${merchantTransactionId}` +
+      process.env.PHONEPE_SALT_KEY;
+
+    const sha256 = crypto.createHash("sha256").update(stringToSign).digest("hex");
+    const checksum = `${sha256}###${process.env.PHONEPE_SALT_INDEX}`;
 
     const url = `${process.env.PHONEPE_API_BASE_URL}/pg/v1/status/${merchantId}/${merchantTransactionId}`;
 
@@ -87,7 +97,7 @@ const checkPaymentStatus = asyncHandler(async (req, res) => {
     const orderId = merchantTransactionId;
 
     switch (code) {
-      case "PAYMENT_SUCCESS":
+      case "PAYMENT_SUCCESS": {
         try {
           const paymentData = {
             transaction_id: response.data.data.transactionId,
@@ -108,32 +118,38 @@ const checkPaymentStatus = asyncHandler(async (req, res) => {
           const failUrl = `${process.env.FRONTEND_URL}/PaymentFailedPage?id=${orderId}`;
           return res.redirect(failUrl);
         }
+      }
 
       case "PAYMENT_PENDING":
-      case "INTERNAL_SERVER_ERROR":
+      case "INTERNAL_SERVER_ERROR": {
         if (retryCount < 3) {
           console.log(`${code} - Retrying (${retryCount + 1}/3)...`);
-          const retryUrl = `${req.baseUrl}${req.path}?id=${orderId}&retry=${retryCount + 1}`;
-          return res.redirect(retryUrl); // frontend can trigger retry delay
+          const retryUrl = `${req.baseUrl}${req.path}?id=${orderId}&retry=${
+            retryCount + 1
+          }`;
+          return res.redirect(retryUrl);
         } else {
           const timeoutUrl = `${process.env.FRONTEND_URL}/PaymentFailedPage?id=${orderId}&message=Retries%20Exceeded`;
           return res.redirect(timeoutUrl);
         }
+      }
 
       case "BAD_REQUEST":
       case "AUTHORIZATION_FAILED":
       case "PAYMENT_ERROR":
       case "TRANSACTION_NOT_FOUND":
       case "PAYMENT_DECLINED":
-      case "TIMED_OUT":
+      case "TIMED_OUT": {
         const errorMessage = encodeURIComponent(`Error: ${code}`);
         const errorUrl = `${process.env.FRONTEND_URL}/PaymentFailedPage?message=${errorMessage}&id=${orderId}`;
         return res.redirect(errorUrl);
+      }
 
-      default:
-        console.warn("Unhandled status code:", code);
+      default: {
+        console.warn("Unhandled status code from PhonePe:", code);
         const unhandledUrl = `${process.env.FRONTEND_URL}/PaymentFailedPage?message=Unhandled%20Response&id=${orderId}`;
         return res.redirect(unhandledUrl);
+      }
     }
   } catch (error) {
     console.error("Error checking payment status:", error.message);
@@ -142,7 +158,4 @@ const checkPaymentStatus = asyncHandler(async (req, res) => {
   }
 });
 
-export {
-  initiatePayment,
-  checkPaymentStatus,
-};
+export { initiatePayment, checkPaymentStatus };
