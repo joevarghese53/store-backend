@@ -16,6 +16,6 @@ const paymentLimiter = createRateLimiter({
 });
 
 router.route("/initiate-payment").post(authenticate, paymentLimiter, initiatePayment);
-router.post("/status", checkPaymentStatus);
+router.route("/status").post(checkPaymentStatus).get(checkPaymentStatus);
 
 export default router;
