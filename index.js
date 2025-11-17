@@ -32,7 +32,7 @@ const port = process.env.PORT || 5000;
 const app = express();
 resetFreeTries();
 
-app.use(helmet)
+app.use(helmet())
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

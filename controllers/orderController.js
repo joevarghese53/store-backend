@@ -7,29 +7,41 @@ import { clearCart } from "./cartController.js";
 import asyncHandler from "../middlewares/asyncHandler.js";
 
 // ---------- Utility: price calculation ----------
-
 function calcPrices(orderItems) {
   let itemsPriceWithTax = 0;
   let taxPrice = 0;
 
   orderItems.forEach((item) => {
-    const gstRate = item.price > 1000 ? 0.12 : 0.05;
+    // Assuming each item has its own price and GST rate
+    const gstRate = item.price > 1000 ? 0.12 : 0.05; // Adjust rates as needed
 
+    // Calculate the price before tax for each item
     const itemPriceBeforeTax = item.price / (1 + gstRate);
+
+    // Calculate the GST for each item
     const itemTaxPrice = item.price - itemPriceBeforeTax;
 
+    // Sum up the total price and tax for all items
     itemsPriceWithTax += item.price * item.qty;
     taxPrice += itemTaxPrice * item.qty;
   });
 
+  // Set shipping price (e.g., free for orders above ₹1000, ₹150 otherwise)
   const shippingPrice = itemsPriceWithTax > 1000 ? 0 : 150;
-  const totalPrice = itemsPriceWithTax + shippingPrice;
+  console.log('itemsPrice (including tax):', itemsPriceWithTax);
+  console.log('shippingPrice:', shippingPrice);
+
+  // Total price includes the price with tax and shipping charges
+  const totalPrice = (
+    parseFloat(itemsPriceWithTax) +
+    parseFloat(shippingPrice)
+  ).toFixed(2);
 
   return {
-    itemsPrice: itemsPriceWithTax - taxPrice, // number
-    shippingPrice,                            // number
-    taxPrice,                                 // number
-    totalPrice,                               // number
+    itemsPrice: (itemsPriceWithTax - taxPrice).toFixed(2), // Price before tax
+    shippingPrice: shippingPrice.toFixed(2), // Shipping charges
+    taxPrice: taxPrice.toFixed(2), // Total GST calculated for all items
+    totalPrice, // Final price including tax and shipping
   };
 }
 

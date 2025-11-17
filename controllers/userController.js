@@ -64,7 +64,8 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new Error("Please provide both email and password.");
   }
 
-  const existingUser = await User.findOne({ email });
+  const existingUser = await User.findOne({ email }).select("+password");
+  console.log("user",existingUser)
   if (!existingUser) {
     res.status(401);
     throw new Error("Invalid email or password.");
