@@ -1,5 +1,5 @@
 import express from "express";
-import { verifyEmailOtp } from "../controllers/emailOtpController.js";
+import { verifyEmailOtp, resendOtpEmail } from "../controllers/emailOtpController.js";
 import { createRateLimiter } from "../utils/rateLimit.js";
 
 // RateLimiters
@@ -12,6 +12,7 @@ const otpLimiter = createRateLimiter({
 
 const router = express.Router();
 
+router.post("/resend-otp", otpLimiter, resendOtpEmail);
 router.post("/verify", otpLimiter, verifyEmailOtp);
 
 export default router;
