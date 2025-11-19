@@ -1,10 +1,11 @@
 import nodemailer from 'nodemailer';
 
-const sendOtpEmailHelper =async ({username, email, otp}) => {
+const sendOtpEmailHelper = async ({ username, email, otp }) => {
+    console.log("Sending OTP email to:", email);
+    
     const transporter = nodemailer.createTransport({
         host: 'smtp.zeptomail.in',
         port: 587,
-        secure: false,
         auth: {
             user: 'emailapikey',
             pass: process.env.ZEPTO_API_KEY,
@@ -28,7 +29,7 @@ const sendOtpEmailHelper =async ({username, email, otp}) => {
         `,
     };
 
-    await transporter.sendMail(mailOptions);
+    transporter.sendMail(mailOptions);
 };
 
 export {
