@@ -245,7 +245,6 @@ const sendOrderConfirmationEmail = async (order, paymentData) => {
     const transporter = nodemailer.createTransport({
       host: "smtp.zeptomail.in",
       port: 587,
-      secure: false,
       auth: {
         user: "emailapikey",
         pass: process.env.ZEPTO_API_KEY,
@@ -326,7 +325,6 @@ const sendOrderOutForDeliveryEmail = async (order) => {
     const transporter = nodemailer.createTransport({
       host: "smtp.zeptomail.in",
       port: 587,
-      secure: false,
       auth: {
         user: "emailapikey",
         pass: process.env.ZEPTO_API_KEY,
