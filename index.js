@@ -32,7 +32,7 @@ const port = process.env.PORT || 5000;
 const app = express();
 resetFreeTries();
 
-app.set("trust proxy", 1); // for express rate limit trusting proxy headers (Render)
+app.set("trust proxy", 1); // for express rate limit trusting proxy headers (Render and vercel)
 app.use(helmet())
 app.use(cors(corsOptions));
 app.use(express.json());
