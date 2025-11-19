@@ -7,36 +7,137 @@ import generateTokens from "../utils/createToken.js";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
 import jwt from "jsonwebtoken";
+import { redisClient } from "../config/redisClient.js";
+import { sendOtpEmailHelper } from "../utils/sendOtpEmailHelper.js";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// @desc    Register new user
-// @route   POST /api/users
+// @desc    Initate Registration - store user details in redis
+// @route   POST /api/users/initiate-registration
 // @access  Public
-const createUser = asyncHandler(async (req, res) => {
-  const { username, email, password } = req.body;
+const initiateRegistration = asyncHandler(async (req, res) => {
 
+  // Data Validation
+  const { username, email, password } = req.body;
   if (!username || !email || !password) {
     res.status(400);
     throw new Error("Please fill all the inputs.");
   }
+  const normalizedEmail = email.toLowerCase();
 
-  const userExists = await User.findOne({ email });
+  // Check if user already exists
+  const userExists = await User.findOne({ email: normalizedEmail });
   if (userExists) {
     res.status(400);
     throw new Error("User with this email already exists.");
   }
 
+  // Hash password before storing anywhere
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(password, salt);
 
-  const newUser = new User({ username, email, password: hashedPassword });
+  //Redis Keys
+  const registrationKey = `registration:${normalizedEmail}`;
+  const otpKey = `otp:email:${normalizedEmail}`;
+
+  // Try Catch for All or Nothing Behaviour
+  try {
+
+    // Store User Data in Redis
+    const tempData = {
+      username,
+      email: normalizedEmail,
+      password: hashedPassword,
+    };
+    await redisClient.setEx(registrationKey, 300, JSON.stringify(tempData));
+
+    // Generate and Store OTP in Redis
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    await redisClient.setEx(otpKey, 300, otp);
+
+    // Send OTP Email
+    await sendOtpEmailHelper({ username, email: normalizedEmail, otp });
+
+  } catch (e) {
+
+    //Delete Stored Values in Case of Failure
+    await redisClient.del(registrationKey);
+    await redisClient.del(otpKey);
+
+    console.error("Error during Initiate Registration:", e);
+    throw new Error("Failed to initiate registration. Please try again.");
+
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: "Registration initiated. Please verify OTP within 5 minutes.",
+  });
+
+});
+
+// @desc    Register new user
+// @route   POST /api/users/register
+// @access  Public
+const createUser = asyncHandler(async (req, res) => {
+
+  //Data Validation
+  const { email } = req.body;
+  if (!email) {
+    res.status(400);
+    throw new Error("Email is required.");
+  }
+  const normalizedEmail = email.toLowerCase();
+
+  // 1) Check OTP verified flag
+  const verifiedKey = `registration:verified:${normalizedEmail}`;
+  const isVerified = await redisClient.get(verifiedKey);
+  if (!isVerified) {
+    res.status(400);
+    throw new Error("OTP not verified. Please verify your email first.");
+  }
+
+  // 2) Read temp registration data from Redis
+  const registrationKey = `registration:${normalizedEmail}`;
+  const tempDataJson = await redisClient.get(registrationKey);
+  if (!tempDataJson) {
+    res.status(400);
+    throw new Error(
+      "Registration data expired or not found. Please initiate registration again."
+    );
+  }
+  const tempData = JSON.parse(tempDataJson);
+  const { username, email: storedEmail, password } = tempData;
+  if (normalizedEmail !== storedEmail) {
+    res.status(400);
+    throw new Error("Email mismatch. Please restart registration.");
+  }
+
+  // 3) Safety: ensure user still doesn't exist
+  const userExists = await User.findOne({ email: storedEmail });
+  if (userExists) {
+    await redisClient.del(registrationKey);
+    await redisClient.del(verifiedKey);
+    res.status(400);
+    throw new Error("User with this email already exists.");
+  }
+
+  // 4) Create user
+  const newUser = new User({
+    username,
+    storedEmail,
+    password, // already hashed
+  });
   await newUser.save();
 
-  // Set refresh cookie + return access token
+  // 5) Clean up Redis keys
+  await redisClient.del(registrationKey);
+  await redisClient.del(verifiedKey);
+
+  // 6) Set refresh cookie + return access token
   const accessToken = generateTokens(res, newUser._id);
 
-  // Initialize free tries
+  // 7) Initialize free tries
   await new Tries({
     user: newUser._id,
     freeTriesRemaining: 5,
@@ -53,8 +154,9 @@ const createUser = asyncHandler(async (req, res) => {
   });
 });
 
+
 // @desc    Login user
-// @route   POST /api/users/auth
+// @route   POST /api/users/login
 // @access  Public
 const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
@@ -65,7 +167,7 @@ const loginUser = asyncHandler(async (req, res) => {
   }
 
   const existingUser = await User.findOne({ email }).select("+password");
-  console.log("user",existingUser)
+  console.log("user", existingUser)
   if (!existingUser) {
     res.status(401);
     throw new Error("Invalid email or password.");
@@ -137,7 +239,7 @@ const logoutCurrentUser = asyncHandler(async (req, res) => {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
-    path: "/", // must match path used when setting the cookie
+    path: "/api/users/refresh-token", // must match path used when setting the cookie
   });
 
   console.log("Refresh token cleared:", res.getHeader("Set-Cookie"));
@@ -146,11 +248,11 @@ const logoutCurrentUser = asyncHandler(async (req, res) => {
 });
 
 // @desc    Get all users
-// @route   GET /api/users
+// @route   GET /api/users/admin/allUsers
 // @access  Admin
 const getAllUsers = asyncHandler(async (req, res) => {
   const users = await User.find({});
-  res.json(users);
+  res.status(200).json(users);
 });
 
 // @desc    Get current user's profile
@@ -164,7 +266,7 @@ const getCurrentUserProfile = asyncHandler(async (req, res) => {
     throw new Error("User not found.");
   }
 
-  res.json({
+  res.status(200).json({
     _id: user._id,
     username: user.username,
     email: user.email,
@@ -182,17 +284,18 @@ const updateCurrentUserProfile = asyncHandler(async (req, res) => {
     throw new Error("User not found");
   }
 
-  user.username = req.body.username || user.username;
-  user.email = req.body.email || user.email;
+  const { username, password, email } = req.body;
+  user.username = username.trim() || user.username;
+  user.email = email || user.email;
 
-  if (req.body.password) {
+  if (password) {
     const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(req.body.password, salt);
+    user.password = await bcrypt.hash(password, salt);
   }
 
   const updatedUser = await user.save();
 
-  res.json({
+  res.status(200).json({
     _id: updatedUser._id,
     username: updatedUser.username,
     email: updatedUser.email,
@@ -201,9 +304,10 @@ const updateCurrentUserProfile = asyncHandler(async (req, res) => {
 });
 
 // @desc    Delete user by ID
-// @route   DELETE /api/users/:id
+// @route   DELETE /api/users/admin/:id
 // @access  Admin
 const deleteUserById = asyncHandler(async (req, res) => {
+
   const user = await User.findById(req.params.id);
 
   if (!user) {
@@ -217,11 +321,16 @@ const deleteUserById = asyncHandler(async (req, res) => {
   }
 
   await User.deleteOne({ _id: user._id });
-  res.json({ message: "User removed" });
+
+  res.status(200).json({ 
+    success: true,
+    message: "User removed" 
+  });
+
 });
 
 // @desc    Get user by ID (admin)
-// @route   GET /api/users/:id
+// @route   GET /api/users/admin/:id
 // @access  Admin
 const getUserById = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id).select("-password");
@@ -235,7 +344,7 @@ const getUserById = asyncHandler(async (req, res) => {
 });
 
 // @desc    Update user by ID (admin)
-// @route   PUT /api/users/:id
+// @route   PUT /api/users/admin/:id
 // @access  Admin
 const updateUserById = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id);
@@ -354,23 +463,8 @@ const resetPassword = asyncHandler(async (req, res) => {
   res.status(200).json({ message: "Password reset successfully" });
 });
 
-// @desc    Check if user exists by email
-// @route   POST /api/users/checkUserExists
-// @access  Public
-const checkUserExists = asyncHandler(async (req, res) => {
-  const { email } = req.body;
-
-  if (!email) {
-    res.status(400);
-    throw new Error("Email is required");
-  }
-
-  const userExists = await User.findOne({ email });
-
-  res.status(200).json({ exists: Boolean(userExists) });
-});
-
 export {
+  initiateRegistration,
   createUser,
   loginUser,
   refreshAccessToken,
@@ -383,5 +477,4 @@ export {
   updateUserById,
   generateResetPasswordLink,
   resetPassword,
-  checkUserExists,
 };

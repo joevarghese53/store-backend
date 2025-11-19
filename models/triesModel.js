@@ -18,11 +18,6 @@ const triesSchema = mongoose.Schema(
             required: true,
             default: 0, // Purchased tries that don't reset
         },
-        lastUpdated: {
-            type: Date,
-            required: true,
-            default: Date.now, // Track when tries were last reset/updated
-        },
     },
     { timestamps: true }
 );
