@@ -125,7 +125,7 @@ const createUser = asyncHandler(async (req, res) => {
   // 4) Create user
   const newUser = new User({
     username,
-    storedEmail,
+    email: storedEmail,
     password, // already hashed
   });
   await newUser.save();

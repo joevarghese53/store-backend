@@ -1,5 +1,6 @@
 import asyncHandler from '../middlewares/asyncHandler.js';
 import { redisClient } from '../config/redisClient.js';
+import nodemailer from "nodemailer";
 
 //Resend Otp Email
 const resendOtpEmail = asyncHandler(async (req, res) => {
