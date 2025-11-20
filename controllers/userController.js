@@ -194,29 +194,21 @@ const loginUser = asyncHandler(async (req, res) => {
 // @route   GET /api/users/refresh-token
 // @access  Public (cookie-based)
 const refreshAccessToken = asyncHandler(async (req, res) => {
-  console.log("Received refresh token request");
-  console.log("🍪 All cookies:", req.cookies);
 
+  //Validate Token
   const rawToken = req.cookies.refreshToken;
-  console.log("➡️ Refresh token received:", rawToken);
-
   const token = rawToken?.replace(/^"|"$/g, ""); // strip accidental quotes
-
   if (!token) {
     res.status(401);
     throw new Error("No refresh token provided");
   }
 
-  console.log("Token about to verify:", token);
-  console.log(
-    "Secret used:",
-    (process.env.JWT_REFRESH_SECRET || "").slice(0, 10) + "..."
-  );
-
   try {
-    const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
-    console.log("Decoded refresh token:", decoded);
 
+    //Verify Token
+    const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+
+    // Create Access Token
     const accessToken = jwt.sign(
       { userId: decoded.userId },
       process.env.JWT_SECRET,
@@ -224,9 +216,12 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     );
 
     res.status(200).json({ accessToken });
+
   } catch (err) {
+
     res.status(403);
     throw new Error(err.message || "Invalid refresh token");
+
   }
 });
 
@@ -234,7 +229,8 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 // @route   POST /api/users/logout
 // @access  Public (cookie-based)
 const logoutCurrentUser = asyncHandler(async (req, res) => {
-  console.log("Logging out user, clearing refresh token cookie");
+  
+  //Clear Cookie
   res.clearCookie("refreshToken", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -242,9 +238,7 @@ const logoutCurrentUser = asyncHandler(async (req, res) => {
     path: "/api/users/refresh-token", // must match path used when setting the cookie
   });
 
-  console.log("Refresh token cleared:", res.getHeader("Set-Cookie"));
-
-  res.status(200).json({ message: "Logged out successfully" });
+  res.status(200).json({ success: true, message: "Logged out successfully" });
 });
 
 // @desc    Get all users
@@ -302,6 +296,9 @@ const updateCurrentUserProfile = asyncHandler(async (req, res) => {
     isAdmin: updatedUser.isAdmin,
   });
 });
+
+
+// ----------checked----------------------
 
 // @desc    Delete user by ID
 // @route   DELETE /api/users/admin/:id
