@@ -305,20 +305,29 @@ const updateCurrentUserProfile = asyncHandler(async (req, res) => {
 // @access  Admin
 const deleteUserById = asyncHandler(async (req, res) => {
 
-  const user = await User.findById(req.params.id);
+  // Admin user making the request
+  const adminUser = req.user; 
+  if (!adminUser.isAdmin) {
+    res.status(403);
+    throw new Error("Access denied. Admins only.");
+  }
 
-  if (!user) {
+  // Validating user to delete
+  const { id } = req.params;
+  const userToDelete = await User.findById(id);
+  if (!userToDelete) {
     res.status(404);
     throw new Error("User not found.");
   }
-
-  if (user.isAdmin) {
+  if (userToDelete.isAdmin) {
     res.status(400);
     throw new Error("Cannot delete admin user");
   }
 
-  await User.deleteOne({ _id: user._id });
+  //Delete User
+  await userToDelete.deleteOne();
 
+  //Response
   res.status(200).json({ 
     success: true,
     message: "User removed" 
