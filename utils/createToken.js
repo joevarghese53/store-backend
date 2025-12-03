@@ -1,25 +1,30 @@
-// createToken.js
+// utils/createToken.js
 import jwt from "jsonwebtoken";
+import { createRefreshTokenDoc } from "./refreshTokenDocHelper.js"; // path as needed
 
-const generateTokens = (res, userId) => {
-  const accessToken = jwt.sign({ userId }, process.env.JWT_SECRET, {
-    expiresIn: "15m", // short-lived access token
+const REFRESH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const BUFFER_MS = 24 * 60 * 60 * 1000;
+
+const generateTokens = async (req, res, userId) => {
+  const accessToken = jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: "15m" });
+
+  const { plain: refreshPlain } = await createRefreshTokenDoc({
+    userId,
+    ip: req.ip || "",
+    userAgent: req.get("user-agent") || "",
+    ttlMs: REFRESH_TTL_MS,
+    bufferMs: BUFFER_MS
   });
 
-  const refreshToken = jwt.sign({ userId }, process.env.JWT_REFRESH_SECRET, {
-    expiresIn: "7d", // long-lived refresh token
-  });
-
-  // Set refresh token in HTTP-only cookie
-  res.cookie('refreshToken', refreshToken, {
+  // Set cookie (maxAge should match TTL)
+  res.cookie("refreshToken", refreshPlain, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    path: '/api/users/refresh-token',
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+    maxAge: REFRESH_TTL_MS,
+    path: "/api/users/refresh-token"
   });
 
-  // Return access token (can be stored in memory on frontend)
   return accessToken;
 };
 

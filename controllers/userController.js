@@ -7,6 +7,9 @@ import generateTokens from "../utils/createToken.js";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
 import jwt from "jsonwebtoken";
+import RefreshToken from "../models/refreshTokenModel.js";
+import { createRefreshTokenDoc } from "../utils/refreshTokenDocHelper.js"
+import { hashToken } from "../utils/hashTokenHelper.js"
 import { redisClient } from "../config/redisClient.js";
 import { sendOtpEmailHelper } from "../utils/sendOtpEmailHelper.js";
 
@@ -135,7 +138,7 @@ const createUser = asyncHandler(async (req, res) => {
   await redisClient.del(verifiedKey);
 
   // 6) Set refresh cookie + return access token
-  const accessToken = generateTokens(res, newUser._id);
+  const accessToken = await generateTokens(req, res, newUser._id);
 
   // 7) Initialize free tries
   await new Tries({
@@ -154,7 +157,6 @@ const createUser = asyncHandler(async (req, res) => {
   });
 });
 
-
 // @desc    Login user
 // @route   POST /api/users/login
 // @access  Public
@@ -166,6 +168,7 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new Error("Please provide both email and password.");
   }
 
+  email = email.toLowerCase();
   const existingUser = await User.findOne({ email }).select("+password");
   console.log("user", existingUser)
   if (!existingUser) {
@@ -179,7 +182,7 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new Error("Invalid email or password.");
   }
 
-  const accessToken = generateTokens(res, existingUser._id);
+  const accessToken = await generateTokens(req, res, existingUser._id);
 
   res.status(200).json({
     _id: existingUser._id,
@@ -191,62 +194,109 @@ const loginUser = asyncHandler(async (req, res) => {
 });
 
 // @desc    Issue new access token using refresh token cookie
-// @route   GET /api/users/refresh-token
+// @route   POST /api/users/refresh-token
 // @access  Public (cookie-based)
-const refreshAccessToken = asyncHandler(async (req, res) => {
+const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const BUFFER_MS = 24 * 60 * 60 * 1000; // 1 day buffer
 
-  //Validate Token
+const refreshAccessToken = asyncHandler(async (req, res) => {
+  // Validate token (strip accidental quotes)
   const rawToken = req.cookies.refreshToken;
-  const token = rawToken?.replace(/^"|"$/g, ""); // strip accidental quotes
+  const token = rawToken?.replace(/^"|"$/g, "");
   if (!token) {
+    res.clearCookie("refreshToken", { path: "/api/users/refresh-token" });
     res.status(401);
     throw new Error("No refresh token provided");
   }
 
-  try {
+  const tokenHash = hashToken(token);
 
-    //Verify Token
-    const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+  // Find stored token record
+  const existing = await RefreshToken.findOne({ tokenHash });
 
-    // Create Access Token
-    const accessToken = jwt.sign(
-      { userId: decoded.userId },
-      process.env.JWT_SECRET,
-      { expiresIn: "15m" }
+  // Token not found -> possible reuse or invalid token
+  if (!existing) {
+    // Clear cookie to remove bad token client-side
+    res.clearCookie("refreshToken", { path: "/api/users/refresh-token" });
+
+    // Optional: If you keep additional identifiers (deviceId) in cookie you could revoke all tokens for that user.
+    // But with opaque tokens alone we can't map an unknown token to a user safely.
+    res.status(401);
+    throw new Error("Invalid refresh token");
+  }
+
+  // Check active
+  if (!existing.isActive) {
+    // Reuse detection: token is expired or revoked (someone attempted to reuse an old token)
+    // Revoke all tokens for this user as a precaution
+    await RefreshToken.updateMany(
+      { userId: existing.userId, revokedAt: null },
+      { revokedAt: new Date() }
     );
 
-    res.status(200).json({ accessToken });
-
-  } catch (err) {
-
-    res.status(403);
-    throw new Error(err.message || "Invalid refresh token");
-
+    res.clearCookie("refreshToken", { path: "/api/users/refresh-token" });
+    res.status(401);
+    throw new Error("Refresh token revoked. Please login again.");
   }
+
+  // At this point token is valid and active => ROTATE
+  // Revoke the old token and record lastUsed info
+  existing.revokedAt = new Date();
+  existing.lastUsedAt = new Date();
+  existing.lastUsedIp = req.ip;
+
+  const { plain: newRefreshPlain, doc: newTokenDoc } = await createRefreshTokenDoc({
+    userId: existing.userId,
+    ip: req.ip || "",
+    userAgent: req.get("user-agent") || "",
+    ttlMs: REFRESH_TOKEN_TTL_MS,
+    bufferMs: BUFFER_MS
+  });
+
+
+  // Link old -> new
+  existing.replacedByToken = newTokenDoc._id;
+  await existing.save();
+
+  // Issue new access token (short-lived JWT)
+  const accessToken = jwt.sign(
+    { userId: existing.userId },
+    process.env.JWT_SECRET,
+    { expiresIn: "15m" }
+  );
+
+  // Send new refresh token as secure HttpOnly cookie (same path as your generator)
+  res.cookie("refreshToken", newRefreshPlain, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+    maxAge: REFRESH_TOKEN_TTL_MS,
+    path: "/api/users/refresh-token",
+  });
+
+  // Return new access token
+  res.status(200).json({ accessToken });
 });
+
 
 // @desc    Logout user (clear refresh cookie)
 // @route   POST /api/users/logout
 // @access  Public (cookie-based)
 const logoutCurrentUser = asyncHandler(async (req, res) => {
-  
-  //Clear Cookie
+
+  const rawToken = req.cookies.refreshToken;
+  const token = rawToken?.replace(/^"|"$/g, "");
+  if (token) {
+    const tokenHash = hashToken(token); // reuse your hashToken helper
+    await RefreshToken.updateOne({ tokenHash }, { revokedAt: new Date() });
+  }
   res.clearCookie("refreshToken", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
-    path: "/api/users/refresh-token", // must match path used when setting the cookie
+    path: "/api/users/refresh-token",
   });
-
   res.status(200).json({ success: true, message: "Logged out successfully" });
-});
-
-// @desc    Get all users
-// @route   GET /api/users/admin/allUsers
-// @access  Admin
-const getAllUsers = asyncHandler(async (req, res) => {
-  const users = await User.find({});
-  res.status(200).json(users);
 });
 
 // @desc    Get current user's profile
@@ -288,6 +338,7 @@ const updateCurrentUserProfile = asyncHandler(async (req, res) => {
   }
 
   const updatedUser = await user.save();
+  await RefreshToken.updateMany({ userId: updatedUser._id, revokedAt: null }, { revokedAt: new Date() });
 
   res.status(200).json({
     _id: updatedUser._id,
@@ -299,80 +350,6 @@ const updateCurrentUserProfile = asyncHandler(async (req, res) => {
 
 
 // ----------checked----------------------
-
-// @desc    Delete user by ID
-// @route   DELETE /api/users/admin/:id
-// @access  Admin
-const deleteUserById = asyncHandler(async (req, res) => {
-
-  // Admin user making the request
-  const adminUser = req.user; 
-  if (!adminUser.isAdmin) {
-    res.status(403);
-    throw new Error("Access denied. Admins only.");
-  }
-
-  // Validating user to delete
-  const { id } = req.params;
-  const userToDelete = await User.findById(id);
-  if (!userToDelete) {
-    res.status(404);
-    throw new Error("User not found.");
-  }
-  if (userToDelete.isAdmin) {
-    res.status(400);
-    throw new Error("Cannot delete admin user");
-  }
-
-  //Delete User
-  await userToDelete.deleteOne();
-
-  //Response
-  res.status(200).json({ 
-    success: true,
-    message: "User removed" 
-  });
-
-});
-
-// @desc    Get user by ID (admin)
-// @route   GET /api/users/admin/:id
-// @access  Admin
-const getUserById = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.id).select("-password");
-
-  if (!user) {
-    res.status(404);
-    throw new Error("User not found");
-  }
-
-  res.json(user);
-});
-
-// @desc    Update user by ID (admin)
-// @route   PUT /api/users/admin/:id
-// @access  Admin
-const updateUserById = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.id);
-
-  if (!user) {
-    res.status(404);
-    throw new Error("User not found");
-  }
-
-  user.username = req.body.username || user.username;
-  user.email = req.body.email || user.email;
-  user.isAdmin = Boolean(req.body.isAdmin);
-
-  const updatedUser = await user.save();
-
-  res.json({
-    _id: updatedUser._id,
-    username: updatedUser.username,
-    email: updatedUser.email,
-    isAdmin: updatedUser.isAdmin,
-  });
-});
 
 // @desc    Generate password reset link
 // @route   POST /api/users/resetPasswordLink
@@ -465,8 +442,91 @@ const resetPassword = asyncHandler(async (req, res) => {
   user.resetPasswordExpires = undefined;
 
   await user.save();
+  await RefreshToken.updateMany({ userId: user._id, revokedAt: null }, { revokedAt: new Date() });
 
   res.status(200).json({ message: "Password reset successfully" });
+});
+
+// @desc    Get all users
+// @route   GET /api/users/admin/allUsers
+// @access  Admin
+const getAllUsers = asyncHandler(async (req, res) => {
+  const users = await User.find({});
+  res.status(200).json(users);
+});
+
+// @desc    Get user by ID (admin)
+// @route   GET /api/users/admin/:id
+// @access  Admin
+const getUserById = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.params.id).select("-password");
+
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+
+  res.json(user);
+});
+
+// @desc    Update user by ID (admin)
+// @route   PUT /api/users/admin/:id
+// @access  Admin
+const updateUserById = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.params.id);
+
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+
+  user.username = req.body.username || user.username;
+  user.email = req.body.email || user.email;
+  user.isAdmin = Boolean(req.body.isAdmin);
+
+  const updatedUser = await user.save();
+
+  res.json({
+    _id: updatedUser._id,
+    username: updatedUser.username,
+    email: updatedUser.email,
+    isAdmin: updatedUser.isAdmin,
+  });
+});
+
+// @desc    Delete user by ID
+// @route   DELETE /api/users/admin/:id
+// @access  Admin
+const deleteUserById = asyncHandler(async (req, res) => {
+
+  // Admin user making the request
+  const adminUser = req.user;
+  if (!adminUser.isAdmin) {
+    res.status(403);
+    throw new Error("Access denied. Admins only.");
+  }
+
+  // Validating user to delete
+  const { id } = req.params;
+  const userToDelete = await User.findById(id);
+  if (!userToDelete) {
+    res.status(404);
+    throw new Error("User not found.");
+  }
+  if (userToDelete.isAdmin) {
+    res.status(400);
+    throw new Error("Cannot delete admin user");
+  }
+
+  //Delete User
+  await userToDelete.deleteOne();
+
+  //Response
+  res.status(200).json({
+    success: true,
+    message: "User removed"
+  });
+
 });
 
 export {
@@ -475,12 +535,12 @@ export {
   loginUser,
   refreshAccessToken,
   logoutCurrentUser,
-  getAllUsers,
   getCurrentUserProfile,
   updateCurrentUserProfile,
-  deleteUserById,
-  getUserById,
-  updateUserById,
   generateResetPasswordLink,
   resetPassword,
+  getAllUsers,
+  getUserById,
+  updateUserById,
+  deleteUserById
 };

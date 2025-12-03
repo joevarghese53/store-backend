@@ -14,13 +14,15 @@ const initiateRegistrationLimiter = createRateLimiter({
   message: "Too many OTP requests. Try again in a minute."
 });
 
+const refreshLimiter = createRateLimiter({ windowMs: 60*1000, max: 30 });
+
 const router = express.Router();
 
 router.post("/initiate-registration", initiateRegistrationLimiter, initiateRegistration);
 router.post("/register", createUser)
 router.post("/login", loginUser);
 router.post("/logout", logoutCurrentUser);
-router.post("/refresh-token" , refreshAccessToken);
+router.post("/refresh-token" , refreshLimiter, refreshAccessToken);
 router
   .route("/profile")
   .get(authenticate, getCurrentUserProfile)
@@ -32,9 +34,9 @@ router.post("/resetPassword", resetPassword);
 router.get("/admin/allUsers", authenticate, authorizeAdmin, getAllUsers);
 router
   .route("/admin/:id")
-  .delete(authenticate, authorizeAdmin, deleteUserById)
   .get(authenticate, authorizeAdmin, getUserById)
-  .put(authenticate, authorizeAdmin, updateUserById);
+  .put(authenticate, authorizeAdmin, updateUserById)
+  .delete(authenticate, authorizeAdmin, deleteUserById);
 
 
 export default router;
