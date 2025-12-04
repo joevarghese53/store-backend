@@ -168,8 +168,8 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new Error("Please provide both email and password.");
   }
 
-  email = email.toLowerCase();
-  const existingUser = await User.findOne({ email }).select("+password");
+  const normalizedEmail = email.toLowerCase();
+  const existingUser = await User.findOne({ email: normalizedEmail }).select("+password");
   console.log("user", existingUser)
   if (!existingUser) {
     res.status(401);
