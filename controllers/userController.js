@@ -348,9 +348,6 @@ const updateCurrentUserProfile = asyncHandler(async (req, res) => {
   });
 });
 
-
-// ----------checked----------------------
-
 // @desc    Generate password reset link
 // @route   POST /api/users/resetPasswordLink
 // @access  Public
@@ -362,7 +359,8 @@ const generateResetPasswordLink = asyncHandler(async (req, res) => {
     throw new Error("Email is required");
   }
 
-  const user = await User.findOne({ email });
+  const normalizedEmail = email.toLowerCase();
+  const user = await User.findOne({ email: normalizedEmail });
 
   // Always respond the same to avoid email enumeration
   if (!user) {
@@ -380,7 +378,8 @@ const generateResetPasswordLink = asyncHandler(async (req, res) => {
   user.resetPasswordExpires = Date.now() + 30 * 60 * 1000; // 30 minutes
   await user.save();
 
-  const resetUrl = `${process.env.FRONTEND_URL}/ResetPassword/${resetToken}`;
+  // const resetUrl = `${process.env.FRONTEND_URL}/ResetPassword/${resetToken}`;
+  const resetUrl = `${process.env.FRONTEND_URL.replace(/\/$/, "")}/ResetPassword/${encodeURIComponent(resetToken)}`;
 
   const transporter = nodemailer.createTransport({
     host: "smtp.zeptomail.in",
@@ -405,12 +404,15 @@ const generateResetPasswordLink = asyncHandler(async (req, res) => {
     `,
   };
 
-  const info = await transporter.sendMail(mailOptions);
-  console.log("Password reset email sent:", info.messageId);
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log("Password reset email sent:", info.messageId);
+  } catch (err) {
+    // Log but still respond 200 to avoid leaking that the user exists or not
+    console.error("Failed to send password reset email:", err);
+  }
 
-  res
-    .status(200)
-    .json({ message: "If a user with this email exists, a reset link will be sent." });
+  res.status(200).json({ message: "If a user with this email exists, a reset link will be sent." });
 });
 
 // @desc    Reset password
@@ -446,6 +448,9 @@ const resetPassword = asyncHandler(async (req, res) => {
 
   res.status(200).json({ message: "Password reset successfully" });
 });
+
+
+// ----------checked----------------------
 
 // @desc    Get all users
 // @route   GET /api/users/admin/allUsers
