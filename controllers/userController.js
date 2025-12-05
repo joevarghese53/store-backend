@@ -449,9 +449,6 @@ const resetPassword = asyncHandler(async (req, res) => {
   res.status(200).json({ message: "Password reset successfully" });
 });
 
-
-// ----------checked----------------------
-
 // @desc    Get all users
 // @route   GET /api/users/admin/allUsers
 // @access  Admin
@@ -473,6 +470,8 @@ const getUserById = asyncHandler(async (req, res) => {
 
   res.json(user);
 });
+
+// ----------checked----------------------
 
 // @desc    Update user by ID (admin)
 // @route   PUT /api/users/admin/:id
