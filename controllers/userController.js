@@ -471,8 +471,6 @@ const getUserById = asyncHandler(async (req, res) => {
   res.json(user);
 });
 
-// ----------checked----------------------
-
 // @desc    Update user by ID (admin)
 // @route   PUT /api/users/admin/:id
 // @access  Admin
@@ -486,8 +484,7 @@ const updateUserById = asyncHandler(async (req, res) => {
 
   user.username = req.body.username || user.username;
   user.email = req.body.email || user.email;
-  user.isAdmin = Boolean(req.body.isAdmin);
-
+  user.isAdmin = Boolean(user.isAdmin);
   const updatedUser = await user.save();
 
   res.json({
@@ -503,7 +500,7 @@ const updateUserById = asyncHandler(async (req, res) => {
 // @access  Admin
 const deleteUserById = asyncHandler(async (req, res) => {
 
-  // Admin user making the request
+  // validating Admin user is making the request
   const adminUser = req.user;
   if (!adminUser.isAdmin) {
     res.status(403);
@@ -548,3 +545,6 @@ export {
   updateUserById,
   deleteUserById
 };
+
+
+// ----------checked----------------------

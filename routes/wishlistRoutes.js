@@ -9,11 +9,11 @@ router.route("/")
   .get(authenticate, getWishlist)
   .post(authenticate, addToWishlist)
 
-router.route("/:id")
-  .delete(authenticate, checkId, removeFromWishlist)
-  .get(authenticate, checkId, checkItemInWishlist)
-
 router.route("/all/:id")
   .delete(authenticate, authorizeAdmin, checkId, removeFromAllWishlist)
+
+router.route("/:productId")
+  .delete(authenticate, checkId, removeFromWishlist)
+  .get(authenticate, checkId, checkItemInWishlist)
 
 export default router;
