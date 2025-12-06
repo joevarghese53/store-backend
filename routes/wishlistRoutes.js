@@ -9,7 +9,7 @@ router.route("/")
   .get(authenticate, getWishlist)
   .post(authenticate, addToWishlist)
 
-router.route("/all/:id")
+router.route("/all/:productId")
   .delete(authenticate, authorizeAdmin, checkId, removeFromAllWishlist)
 
 router.route("/:productId")
