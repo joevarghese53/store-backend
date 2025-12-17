@@ -17,3 +17,6 @@ router.route("/:productId")
   .get(authenticate, checkId, checkItemInWishlist)
 
 export default router;
+
+
+// -----------------------Checked -------------------------

@@ -37,7 +37,7 @@ const getUserTries = asyncHandler(async (req, res) => {
 
   if (!tries) {
     res.status(404);
-    throw new Error("Tries not found");
+    throw new Error("Not found");
   }
 
   res.status(200).json({
