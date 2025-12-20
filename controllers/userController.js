@@ -11,6 +11,7 @@ import { createRefreshTokenDoc } from "../utils/refreshTokenDocHelper.js"
 import { hashToken } from "../utils/hashTokenHelper.js"
 import { redisClient } from "../config/redisClient.js";
 import { sendOtpEmailHelper } from "../utils/sendOtpEmailHelper.js";
+import sendEmail from "../utils/sendEmail.js";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -58,7 +59,23 @@ const initiateRegistration = asyncHandler(async (req, res) => {
     await redisClient.setEx(otpKey, 300, otp);
 
     // Send OTP Email
-    await sendOtpEmailHelper({ username, email: normalizedEmail, otp });
+    const emailSent = await sendEmail({
+      to: normalizedEmail,
+      name: username,
+      subject: "OTP Verification",
+      html: ` <div style="font-family: Arial; border: 1px solid #ddd; padding: 20px; max-width: 600px; margin: auto;">
+          <h2 style="background-color: #2874F0; color: white; padding: 10px; text-align: center;">Flow State</h2>
+          <h3>Hi ${username},</h3>
+          <p>This is your OTP for verifying your account. Valid for 5 minutes.</p>
+          <h2 style="color:#2874F0">${otp}</h2>
+          <p>Please do not share this OTP with anyone.</p>
+          <p>Best Regards,<br>Flow State Team</p>
+        </div>`,
+    });
+
+    if (!emailSent) {
+      throw new Error("Failed to send OTP email");
+    }
 
   } catch (e) {
 
@@ -380,30 +397,13 @@ const generateResetPasswordLink = asyncHandler(async (req, res) => {
   // const resetUrl = `${process.env.FRONTEND_URL}/ResetPassword/${resetToken}`;
   const resetUrl = `${process.env.FRONTEND_URL.replace(/\/$/, "")}/ResetPassword/${encodeURIComponent(resetToken)}`;
 
-  try {
-    const response = await fetch("https://api.zeptomail.in/v1.1/email", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Zoho-enczapikey ${process.env.ZEPTO_API_KEY}`,
-      },
-      body: JSON.stringify({
-        from: {
-          address: "noreply@flowstateproject.in",
-          name: "Flow State",
-        },
-        to: [
-          {
-            email_address: {
-              address: email,
-              name: user.name || "User",
-            },
-          },
-        ],
-        subject: "Password Reset Request",
-        htmlbody: `
-          <h1>Reset Your Password</h1>
-          <p>Click the link below to reset your password:</p>
+  const emailSent = await sendEmail({
+    to: email,
+    name: user.name || "User",
+    subject: "Password Reset Request",
+    html: `
+       <h1>Reset Your Password</h1>
+      <p>Click the link below to reset your password:</p>
           <p>
             <a href="${resetUrl}" style="color:#2874F0;">
               Reset Password
@@ -416,18 +416,12 @@ const generateResetPasswordLink = asyncHandler(async (req, res) => {
             For queries, contact
             <a href="mailto:info@flowstateproject.in">info@flowstateproject.in</a>
           </p>
-        `,
-      }),
-    });
+    `,
+  });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error("ZeptoMail reset email error:", data);
-    }
-  } catch (err) {
-    // Log but still respond 200 to avoid leaking that the user exists or not
-    console.error("Failed to send password reset email:", err);
+  if (!emailSent) {
+    res.status(500);
+    throw new Error("Failed to send reset email. Please try again later.");
   }
 
   res.status(200).json({ message: "If a user with this email exists, a reset link will be sent." });

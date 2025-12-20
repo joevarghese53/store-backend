@@ -4,6 +4,7 @@ import Product from "../models/productModel.js";
 import cProduct from "../models/cProductModel.js";
 import { clearCart } from "./cartController.js";
 import asyncHandler from "../middlewares/asyncHandler.js";
+import sendEmail from "../utils/sendEmail.js";
 
 // ---------- Utility: price calculation ----------
 function calcPrices(orderItems) {
@@ -238,31 +239,11 @@ const findOrderById = asyncHandler(async (req, res) => {
 // ---------- Payment + Emails ----------
 
 const sendOrderConfirmationEmail = async (order, paymentData) => {
-  try {
-    console.log("Sending order confirmation email...", order._id);
-
-    const response = await fetch("https://api.zeptomail.in/v1.1/email", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Zoho-enczapikey ${process.env.ZEPTO_API_KEY}`,
-      },
-      body: JSON.stringify({
-        from: {
-          address: "noreply@flowstateproject.in",
-          name: "Flow State",
-        },
-        to: [
-          {
-            email_address: {
-              address: order.user.email,
-              name: order.user.username || "User",
-            },
-          },
-        ],
-        subject: "Order Confirmed",
-        htmlbody: `
-          <div style="font-family: Arial, sans-serif; border: 1px solid #ddd; padding: 20px; max-width: 600px; margin: auto;">
+  const emailSent = await sendEmail({
+    to: order.user.email,
+    name: order.user.username || "User",
+    subject: "Order Confirmed",
+    html: ` <div style="font-family: Arial, sans-serif; border: 1px solid #ddd; padding: 20px; max-width: 600px; margin: auto;">
             <h2 style="background-color: #2874F0; color: white; padding: 10px; text-align: center;">Flow State</h2>
             <h3>Hi ${order.user.username || "User"},</h3>
             <p>Your order has been successfully placed.</p>
@@ -287,18 +268,13 @@ const sendOrderConfirmationEmail = async (order, paymentData) => {
             <p>Best Regards,<br>Flow State Team</p>
           </div>
         `,
-      }),
+  });
+
+  if (!emailSent) {
+    console.error("Failed to send order confirmation email for order:", {
+      orderId: order._id,
+      userEmail: order.user.email,
     });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error("ZeptoMail order email error:", data);
-    } else {
-      console.log("Order confirmation email sent successfully");
-    }
-  } catch (error) {
-    console.error("Error sending order confirmation email:", error);
   }
 };
 
@@ -338,30 +314,11 @@ const markOrderAsPaid = async (orderId, paymentData) => {
 };
 
 const sendOrderOutForDeliveryEmail = async (order) => {
-  try {
-    console.log("Sending order out-for-delivery email...", order._id);
-
-    const response = await fetch("https://api.zeptomail.in/v1.1/email", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Zoho-enczapikey ${process.env.ZEPTO_API_KEY}`,
-      },
-      body: JSON.stringify({
-        from: {
-          address: "noreply@flowstateproject.in",
-          name: "Flow State",
-        },
-        to: [
-          {
-            email_address: {
-              address: order.user.email,
-              name: order.user.username || "User",
-            },
-          },
-        ],
-        subject: "Order Out for Delivery",
-        htmlbody: `
+  const emailSent = await sendEmail({
+    to: order.user.email,
+    name: order.user.username || "User",
+    subject: "Order Out for Delivery",
+    html:  `
           <div style="font-family: Arial, sans-serif; border: 1px solid #ddd; padding: 20px; max-width: 600px; margin: auto;">
             <h2 style="background-color: #2874F0; color: white; padding: 10px; text-align: center;">Flow State</h2>
             <h3>Hi ${order.user.username || "User"},</h3>
@@ -384,18 +341,13 @@ const sendOrderOutForDeliveryEmail = async (order) => {
             <p>Best Regards,<br>Flow State Team</p>
           </div>
         `,
-      }),
+  });
+
+  if (!emailSent) {
+    console.error("Failed to send out-for-delivery email for order:", {
+      orderId: order._id,
+      userEmail: order.user.email,
     });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error("ZeptoMail out-for-delivery error:", data);
-    } else {
-      console.log("Out-for-delivery email sent successfully");
-    }
-  } catch (error) {
-    console.error("Error sending out-for-delivery email:", error);
   }
 };
 
