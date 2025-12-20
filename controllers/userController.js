@@ -10,7 +10,6 @@ import RefreshToken from "../models/refreshTokenModel.js";
 import { createRefreshTokenDoc } from "../utils/refreshTokenDocHelper.js"
 import { hashToken } from "../utils/hashTokenHelper.js"
 import { redisClient } from "../config/redisClient.js";
-import { sendOtpEmailHelper } from "../utils/sendOtpEmailHelper.js";
 import sendEmail from "../utils/sendEmail.js";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
