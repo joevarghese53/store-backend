@@ -2,7 +2,6 @@
 import Order from "../models/orderModel.js";
 import Product from "../models/productModel.js";
 import cProduct from "../models/cProductModel.js";
-import nodemailer from "nodemailer";
 import { clearCart } from "./cartController.js";
 import asyncHandler from "../middlewares/asyncHandler.js";
 
@@ -240,49 +239,69 @@ const findOrderById = asyncHandler(async (req, res) => {
 
 const sendOrderConfirmationEmail = async (order, paymentData) => {
   try {
-    console.log("Sending order confirmation email...", order);
+    console.log("Sending order confirmation email...", order._id);
 
-    const transporter = nodemailer.createTransport({
-      host: "smtp.zeptomail.in",
-      port: 587,
-      auth: {
-        user: "emailapikey",
-        pass: process.env.ZEPTO_API_KEY,
+    const response = await fetch("https://api.zeptomail.in/v1.1/email", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Zoho-enczapikey ${process.env.ZEPTO_API_KEY}`,
       },
+      body: JSON.stringify({
+        from: {
+          address: "noreply@flowstateproject.in",
+          name: "Flow State",
+        },
+        to: [
+          {
+            email_address: {
+              address: order.user.email,
+              name: order.user.username || "User",
+            },
+          },
+        ],
+        subject: "Order Confirmed",
+        htmlbody: `
+          <div style="font-family: Arial, sans-serif; border: 1px solid #ddd; padding: 20px; max-width: 600px; margin: auto;">
+            <h2 style="background-color: #2874F0; color: white; padding: 10px; text-align: center;">Flow State</h2>
+            <h3>Hi ${order.user.username || "User"},</h3>
+            <p>Your order has been successfully placed.</p>
+            <p><strong>Order ID:</strong> ${order._id}</p>
+            <p>Delivery is handled by a third-party service and delivery time may vary.</p>
+            <hr>
+            <h4>Order Summary</h4>
+            <p><strong>Amount Paid:</strong> ₹${paymentData.amount_paid}</p>
+            <p><strong>Payment Method:</strong> ${paymentData.payment_method}</p>
+            <p><strong>Delivery Address:</strong><br>
+              ${order.shippingAddress.address},<br>
+              ${order.shippingAddress.city} - ${order.shippingAddress.postalCode}
+            </p>
+            <hr>
+            <h4>Thank you for shopping with us!</h4>
+            <p>We will notify you once your item is shipped.</p>
+            <p>Please do not reply to this email.</p>
+            <p>
+              For queries contact
+              <a href="mailto:info@flowstateproject.in">info@flowstateproject.in</a>
+            </p>
+            <p>Best Regards,<br>Flow State Team</p>
+          </div>
+        `,
+      }),
     });
 
-    const mailOptions = {
-      from: `"Flow State" <noreply@flowstateproject.in>`,
-      to: order.user.email,
-      subject: "Order Confirmed",
-      html: `
-        <div style="font-family: Arial, sans-serif; border: 1px solid #ddd; padding: 20px; max-width: 600px; margin: auto;">
-          <h2 style="background-color: #2874F0; color: white; padding: 10px; text-align: center;">Flow State</h2>
-          <h3>Hi ${order.user.username},</h3>
-          <p>Your order has been successfully placed.</p>
-          <p><strong>Order ID:</strong> ${order._id}</p>
-          <p>We are committed to serving you with the utmost care. Delivery is done by a third-party service and the delivery time may vary.</p>
-          <hr style="border-top: 1px solid #ddd;">
-          <h4>Order Summary</h4>
-          <p><strong>Amount Paid:</strong> ₹${paymentData.amount_paid}</p>
-          <p><strong>Delivery Address:</strong> ${order.shippingAddress.address}, ${order.shippingAddress.city} - ${order.shippingAddress.postalCode}</p>
-          <p><strong>Payment Method:</strong> ${paymentData.payment_method}</p>
-          <hr style="border-top: 1px solid #ddd;">
-          <h4>Thank you for shopping with us!</h4>
-          <p>We will notify you once your item is shipped.</p>
-          <p>Please do not reply to this email as it is sent from an unmonitored address.</p>
-          <p>For any queries, please contact us at <a href="mailto:info@flowstateproject.in">info@flowstateproject.in</a></p>
-          <p>Best Regards,<br>Flow State Team</p>
-        </div>
-      `,
-    };
+    const data = await response.json();
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log("Order confirmation email sent: %s", info.messageId);
+    if (!response.ok) {
+      console.error("ZeptoMail order email error:", data);
+    } else {
+      console.log("Order confirmation email sent successfully");
+    }
   } catch (error) {
-    console.error("Error sending order confirmation email:", error.message);
+    console.error("Error sending order confirmation email:", error);
   }
 };
+
 
 // This is NOT an Express handler, it's a service called from proxyController
 const markOrderAsPaid = async (orderId, paymentData) => {
@@ -320,47 +339,63 @@ const markOrderAsPaid = async (orderId, paymentData) => {
 
 const sendOrderOutForDeliveryEmail = async (order) => {
   try {
-    console.log("Sending order out-for-delivery email...", order);
+    console.log("Sending order out-for-delivery email...", order._id);
 
-    const transporter = nodemailer.createTransport({
-      host: "smtp.zeptomail.in",
-      port: 587,
-      auth: {
-        user: "emailapikey",
-        pass: process.env.ZEPTO_API_KEY,
+    const response = await fetch("https://api.zeptomail.in/v1.1/email", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Zoho-enczapikey ${process.env.ZEPTO_API_KEY}`,
       },
+      body: JSON.stringify({
+        from: {
+          address: "noreply@flowstateproject.in",
+          name: "Flow State",
+        },
+        to: [
+          {
+            email_address: {
+              address: order.user.email,
+              name: order.user.username || "User",
+            },
+          },
+        ],
+        subject: "Order Out for Delivery",
+        htmlbody: `
+          <div style="font-family: Arial, sans-serif; border: 1px solid #ddd; padding: 20px; max-width: 600px; margin: auto;">
+            <h2 style="background-color: #2874F0; color: white; padding: 10px; text-align: center;">Flow State</h2>
+            <h3>Hi ${order.user.username || "User"},</h3>
+            <p>Your order is now <strong>out for delivery</strong>.</p>
+            <p><strong>Order ID:</strong> ${order._id}</p>
+            <p>Please be available at the delivery address to receive your package.</p>
+            <hr>
+            <h4>Delivery Address</h4>
+            <p>
+              ${order.shippingAddress.address}<br>
+              ${order.shippingAddress.city} - ${order.shippingAddress.postalCode}
+            </p>
+            <hr>
+            <h4>Thank you for shopping with us!</h4>
+            <p>Please do not reply to this email.</p>
+            <p>
+              For any queries contact
+              <a href="mailto:info@flowstateproject.in">info@flowstateproject.in</a>
+            </p>
+            <p>Best Regards,<br>Flow State Team</p>
+          </div>
+        `,
+      }),
     });
 
-    const mailOptions = {
-      from: `"Flow State" <noreply@flowstateproject.in>`,
-      to: order.user.email,
-      subject: "Order Out for Delivery",
-      html: `
-        <div style="font-family: Arial, sans-serif; border: 1px solid #ddd; padding: 20px; max-width: 600px; margin: auto;">
-          <h2 style="background-color: #2874F0; color: white; padding: 10px; text-align: center;">Flow State</h2>
-          <h3>Hi ${order.user.username},</h3>
-          <p>Your order is now out for delivery.</p>
-          <p><strong>Order ID:</strong> ${order._id}</p>
-          <p>Please be available at the delivery address to receive your package.</p>
-          <hr style="border-top: 1px solid #ddd;">
-          <h4>Delivery Address</h4>
-          <p>${order.shippingAddress.address}, ${order.shippingAddress.city} - ${order.shippingAddress.postalCode}</p>
-          <hr style="border-top: 1px solid #ddd;">
-          <h4>Thank you for shopping with us!</h4>
-          <p>Please do not reply to this email as it is sent from an unmonitored address.</p>
-          <p>For any queries, please contact us at <a href="mailto:info@flowstateproject.in">info@flowstateproject.in</a></p>
-          <p>Best Regards,<br>Flow State Team</p>
-        </div>
-      `,
-    };
+    const data = await response.json();
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log("Out-for-delivery email sent: %s", info.messageId);
+    if (!response.ok) {
+      console.error("ZeptoMail out-for-delivery error:", data);
+    } else {
+      console.log("Out-for-delivery email sent successfully");
+    }
   } catch (error) {
-    console.error(
-      "Error sending order out-for-delivery email:",
-      error.message
-    );
+    console.error("Error sending out-for-delivery email:", error);
   }
 };
 

@@ -5,7 +5,6 @@ import asyncHandler from "../middlewares/asyncHandler.js";
 import bcrypt from "bcryptjs";
 import generateTokens from "../utils/createToken.js";
 import crypto from "crypto";
-import nodemailer from "nodemailer";
 import jwt from "jsonwebtoken";
 import RefreshToken from "../models/refreshTokenModel.js";
 import { createRefreshTokenDoc } from "../utils/refreshTokenDocHelper.js"
@@ -381,32 +380,51 @@ const generateResetPasswordLink = asyncHandler(async (req, res) => {
   // const resetUrl = `${process.env.FRONTEND_URL}/ResetPassword/${resetToken}`;
   const resetUrl = `${process.env.FRONTEND_URL.replace(/\/$/, "")}/ResetPassword/${encodeURIComponent(resetToken)}`;
 
-  const transporter = nodemailer.createTransport({
-    host: "smtp.zeptomail.in",
-    port: 587,
-    auth: {
-      user: "emailapikey",
-      pass: process.env.ZEPTO_API_KEY,
-    },
-  });
-
-  const mailOptions = {
-    from: `"Flow State" <noreply@flowstateproject.in>`,
-    to: email,
-    subject: "Password Reset Request",
-    html: `
-      <h1>Reset Your Password</h1>
-      <p>Click the link below to reset your password</p>
-      <a href="${resetUrl}">Reset Password</a>
-      <p>If you did not request a password reset, please ignore this email</p>
-      <p>Please do not reply to this email as it is sent from an unmonitored address.</p>
-      <p>For any queries, please contact us at <a href="mailto:info@flowstateproject.in"></p>
-    `,
-  };
-
   try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log("Password reset email sent:", info.messageId);
+    const response = await fetch("https://api.zeptomail.in/v1.1/email", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Zoho-enczapikey ${process.env.ZEPTO_API_KEY}`,
+      },
+      body: JSON.stringify({
+        from: {
+          address: "noreply@flowstateproject.in",
+          name: "Flow State",
+        },
+        to: [
+          {
+            email_address: {
+              address: email,
+              name: user.name || "User",
+            },
+          },
+        ],
+        subject: "Password Reset Request",
+        htmlbody: `
+          <h1>Reset Your Password</h1>
+          <p>Click the link below to reset your password:</p>
+          <p>
+            <a href="${resetUrl}" style="color:#2874F0;">
+              Reset Password
+            </a>
+          </p>
+          <p>This link is valid for 30 minutes.</p>
+          <p>If you did not request a password reset, please ignore this email.</p>
+          <p>Please do not reply to this email.</p>
+          <p>
+            For queries, contact
+            <a href="mailto:info@flowstateproject.in">info@flowstateproject.in</a>
+          </p>
+        `,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("ZeptoMail reset email error:", data);
+    }
   } catch (err) {
     // Log but still respond 200 to avoid leaking that the user exists or not
     console.error("Failed to send password reset email:", err);
