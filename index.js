@@ -56,6 +56,10 @@ app.use("/api/health", (req, res) => {
   res.send("Server is running");
 });
 
+app.get("/", (req, res) => {
+  res.redirect("/api/health");
+});
+
 app.use(notFound)
 app.use(errorHandler);
 
