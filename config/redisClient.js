@@ -1,53 +1,50 @@
-// redisClient.js
-import { createClient } from 'redis';
+import { createClient } from "redis";
 import dotenv from "dotenv";
-dotenv.config()
+dotenv.config();
 
 const REDIS_URL = process.env.REDIS_URL;
 
+let redisClient = null;
+
 if (!REDIS_URL) {
-  console.warn("⚠️  REDIS_URL is not set. Redis will be disabled.");
+  console.warn("⚠️ REDIS_URL not set. Redis disabled.");
+} else {
+  redisClient = createClient({
+    url: REDIS_URL,
+    socket: {
+      keepAlive: 30000,
+      timeout: 10000,
+      reconnectStrategy: (retries) => {
+        if (retries > 10) {
+          return new Error("Redis reconnection failed");
+        }
+        return Math.min(1000 * 2 ** retries, 30000);
+      },
+    },
+    maxRetriesPerRequest: 3,
+    pingInterval: 30000,
+  });
+
+  redisClient.on("ready", () => console.log("✅ Redis ready"));
+  redisClient.on("error", (err) => console.error("❌ Redis error:", err));
 }
 
-const redisClient = createClient({
-  url: REDIS_URL,
-  socket: {
-    keepAlive: 30000,            // Prevent idle disconnects (NAT/LB timeouts)
-    reconnectStrategy: (retries) => {
-      // Stop after too many retries
-      if (retries > 10) {
-        console.error("❌ Redis: Max reconnection attempts reached");
-        return new Error("Redis reconnection failed");
-      }ß
-      // Exponential backoff
-      const delay = Math.min(1000 * 2 ** retries, 30000);
-      console.log(`🔄 Redis reconnecting in ${delay}ms...`);
-      return delay;
-    },
-    timeout: 10000,              // Connect timeout 10s
-  },
-  maxRetriesPerRequest: 3,       // Fail fast instead of queueing forever
-  pingInterval: 30000            // Periodic ping to keep connection alive
-});
-
-// --- Event Logging ---
-redisClient.on("connect", () => console.log("🔌 Redis: Connecting..."));
-redisClient.on("ready", () => console.log("✅ Redis: Connected & Ready"));
-redisClient.on("reconnecting", () => console.log("🔄 Redis: Attempting reconnect..."));
-redisClient.on("end", () => console.log("🛑 Redis: Connection closed"));
-redisClient.on("error", (err) => console.error("❌ Redis Error:", err));
-
 const connectRedis = async () => {
+  if (!redisClient) return;
+
   try {
     if (!redisClient.isOpen) {
       await redisClient.connect();
-      console.log("✅ Redis connected successfully");
     }
   } catch (err) {
-    console.error("Redis connection failed:", err);
+    console.error("❌ Redis connection failed:", err.message);
+    if (process.env.NODE_ENV === "production") {
+      throw err;
+    }
   }
 };
 
+export { redisClient, connectRedis };
 
 
-export {redisClient, connectRedis}
+// ----------------checked----------------

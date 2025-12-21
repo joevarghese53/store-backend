@@ -3,12 +3,11 @@ dotenv.config();
 
 const allowedOrigins =
   process.env.NODE_ENV === 'production'
-    ? ['https://www.flowstateproject.in']
+    ? process.env.ALLOWED_ORIGINS.split(',')
     : ['http://localhost:3000'];
 
 const corsOptions = {
   origin: (origin, callback) => {
-    console.log("🌐 Incoming Origin:", origin);
 
     // 1) Allow non-browser / redirects / curl (no Origin header)
     if (!origin) {
@@ -31,7 +30,6 @@ const corsOptions = {
     }
 
     // 4) Otherwise: DO NOT error, just don't set CORS headers
-    console.warn(`🚫 CORS: origin not allowed -> ${origin}`);
     return callback(null, false);   // <--- key change
   },
 
@@ -47,3 +45,5 @@ const corsOptions = {
 };
 
 export default corsOptions;
+
+// ----------------checked----------------

@@ -30,7 +30,6 @@
     "mongodb": "^6.8.0",
     "mongoose": "^8.5.2",
     "multer": "^2.0.2",
-    "node-cron": "^3.0.3",
     "nodemailer": "^7.0.10",
     "redis": "^5.5.6"
   },
