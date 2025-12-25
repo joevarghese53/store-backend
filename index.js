@@ -22,7 +22,7 @@ import cProductRoutes from "./routes/cProductRoutes.js";
 import triesRoutes from "./routes/triesRoutes.js";
 import generateImageRoutes from "./routes/generateImageRoutes.js";
 import emailOtpRoutes from "./routes/emailOtpRoutes.js";
-import phonepeRoutes from "./routes/phonePeRoutes.js";
+import phonepeRoutes from "./routes/phonepeRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 
 import {errorHandler, notFound } from './middlewares/errorHandler.js';
