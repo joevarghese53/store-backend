@@ -22,6 +22,8 @@ import cProductRoutes from "./routes/cProductRoutes.js";
 import triesRoutes from "./routes/triesRoutes.js";
 import generateImageRoutes from "./routes/generateImageRoutes.js";
 import emailOtpRoutes from "./routes/emailOtpRoutes.js";
+import phonepeRoutes from "./routes/phonePeRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
 
 import {errorHandler, notFound } from './middlewares/errorHandler.js';
 import corsOptions from "./config/corsOptions.js";
@@ -52,6 +54,8 @@ app.use("/api/cproducts", cProductRoutes);
 app.use("/api/tries", triesRoutes);
 app.use("/api/generate-image", generateImageRoutes);
 app.use("/api/email-otp", emailOtpRoutes);
+app.use("/api/phonepe-webhook", phonepeRoutes);
+app.use("api/payment", paymentRoutes);
 app.use("/api/health", (req, res) => {
   res.send("Server is running");
 });
