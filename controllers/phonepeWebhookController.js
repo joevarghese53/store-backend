@@ -46,6 +46,7 @@ const phonepeWebhook = asyncHandler(async (req, res) => {
     if (state === "COMPLETED") {
         switch (txn.service) {
             case "TRIES_PURCHASE":
+                console.log("Fulfilling tries purchase from webhook for:", merchantOrderId);
                 await applyPurchasedTries(txn.userId, txn.triesToPurchase);
                 txn.fulfilled = true;
                 await txn.save();
