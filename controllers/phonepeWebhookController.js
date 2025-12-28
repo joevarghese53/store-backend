@@ -5,22 +5,21 @@ import asyncHandler from "../middlewares/asyncHandler.js";
 import Transaction from "../models/transactionModel.js";
 
 export function verifyPhonePeWebhookAuth(req) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Basic ")) return false;
+    const authHeader = req.headers["authorization"];
 
-  const b64 = authHeader.split(" ")[1];
-  const [username, password] = Buffer.from(b64, "base64")
-    .toString("utf-8")
-    .split(":");
+    if (!authHeader) {
+        return false;
+    }
 
-    console.log("Verifying PhonePe webhook auth for user:", username);
+    const expectedHash = crypto
+        .createHash("sha256")
+        .update(
+            `${process.env.PHONEPE_WEBHOOK_USERNAME}:${process.env.PHONEPE_WEBHOOK_PASSWORD}`
+        )
+        .digest("hex");
 
-  return (
-    username === process.env.PHONEPE_WEBHOOK_USERNAME &&
-    password === process.env.PHONEPE_WEBHOOK_PASSWORD
-  );
+    return authHeader === `SHA256(${expectedHash})` || authHeader === expectedHash;
 }
-
 
 const phonepeWebhook = asyncHandler(async (req, res) => {
 
