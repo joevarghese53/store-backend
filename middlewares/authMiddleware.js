@@ -39,6 +39,7 @@ const authenticate = asyncHandler(async (req, res, next) => {
     next();
   } catch (err) {
     res.status(401);
+    console.error("Authentication error:", err);
     throw new Error("Not authorized, token failed", err);
   }
 });

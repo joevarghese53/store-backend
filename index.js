@@ -32,12 +32,6 @@ dotenv.config();
 const port = process.env.PORT || 5000;
 
 const app = express();
-app.use((req, res, next) => {
-  if (req.url.includes("phonepe-webhook")) {
-    console.log("🌍 Incoming request:", req.method, req.url);
-  }
-  next();
-});
 
 app.set("trust proxy", 1); // for express rate limit trusting proxy headers (Render and vercel)
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
