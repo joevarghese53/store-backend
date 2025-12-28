@@ -17,15 +17,25 @@ import {
   markOrderAsDelivered,
   markOrderAsShipped,
   markOrderAsOutForDelivery,
+  initiatePayment,
+  checkPaymentStatus,
 } from "../controllers/orderController.js";
 
+import { createRateLimiter } from "../utils/rateLimit.js";
 import { authenticate, authorizeAdmin } from "../middlewares/authMiddleware.js";
+
+const paymentLimiter = createRateLimiter({
+  windowMs: 60 * 1000,  // 1 minute
+  max: 5,
+  message: "Too many payment attempts. Try again later."
+});
 
 router
   .route("/")
   .post(authenticate, createOrder)
   .get(authenticate, authorizeAdmin, getAllOrders);
-
+router.route("/initiate-payment").post(authenticate, paymentLimiter, initiatePayment);
+router.route("/status").post(checkPaymentStatus).get(checkPaymentStatus);
 router.route("/mine").get(authenticate, getUserOrders);
 router.route("/total-orders").get(authenticate, authorizeAdmin, countTotalOrdersByDate);
 router.route("/total-sales").get(authenticate, authorizeAdmin, calculateTotalSales);

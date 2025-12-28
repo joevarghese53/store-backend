@@ -3,6 +3,6 @@ import express from "express";
 const router = express.Router();
 import { checkPaymentStatus } from "../controllers/paymentController.js";
 
-router.post("/status", checkPaymentStatus);
+router.get("/status", checkPaymentStatus);
 
 export default router;

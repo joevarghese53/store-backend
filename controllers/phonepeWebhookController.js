@@ -1,4 +1,4 @@
-// controllers/phonepeController.js
+// controllers/phonepeWebhookController.js
 import crypto from "crypto";
 import { applyPurchasedTries } from "./triesController.js";
 import asyncHandler from "../middlewares/asyncHandler.js";

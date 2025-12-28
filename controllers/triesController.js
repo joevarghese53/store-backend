@@ -70,11 +70,38 @@ const useTry = asyncHandler(async (req, res) => {
 // @access  Private
 const initiatePayment = asyncHandler(async (req, res) => {
   // Validate request body
-  const { featureId, amount, userId, name, triesToPurchase } = req.body;
-  if (!featureId || !amount || !userId || !name || !triesToPurchase) {
+  const { featureId, option } = req.body;
+  if (!featureId || !option) {
     res.status(400);
-    throw new Error("featureId, amount, userId, name and triesToPurchase are required");
+    throw new Error("featureId and option are required");
   }
+  const userId = req.user._id;
+  if (!userId) {
+    res.status(400);
+    throw new Error("User not authenticated");
+  }
+  const tableData = {
+    basic: {
+      price: 30,
+      attempts: 10
+    },
+    advanced: {
+      price: 139,
+      attempts: 50
+    },
+    pro: {
+      price: 249,
+      attempts: 100
+    }
+  };
+  const selectedPlan = tableData[option];
+  if (!selectedPlan) {
+    res.status(400);
+    throw new Error("Invalid option selected");
+  }
+  const amount = selectedPlan.price * 100; // in paise
+  const triesToPurchase = selectedPlan.attempts;
+
 
   // Add Txn to DB
   const merchantOrderId = `${featureId}_${userId}_${Date.now()}`;
@@ -96,6 +123,7 @@ const initiatePayment = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     redirectUrl: response.redirectUrl,
+    merchantOrderId
   });
 });
 
