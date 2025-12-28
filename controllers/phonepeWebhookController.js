@@ -15,6 +15,8 @@ export function verifyPhonePeWebhookAuth(req) {
     )
     .digest("hex");
 
+    console.log("Expected Hash:", expectedHash);
+    console.log("Received Auth Header:", authHeader);
   return authHeader === expectedHash;
 }
 
