@@ -8,10 +8,11 @@ export function verifyPhonePeWebhookAuth(req) {
   const authHeader = req.headers["authorization"];
   if (!authHeader) return false;
 
+  console.log(`${process.env.PHONEPE_WEBHOOK_USERNAME}:${process.env.PHONEPE_WEBHOOK_PASSWORD}`);
   const expectedHash = crypto
     .createHash("sha256")
     .update(
-      `${process.env.PHONEPE_WEBHOOK_USERNAME}:${process.env.PHONEPE_WEBHOOK_PASSWORD}`
+      `${process.env.PHONEPE_WEBHOOK_USERNAME}:${process.env.PHONEPE_WEBHOOK_PASSWORD}`, "utf8"
     )
     .digest("hex");
 
