@@ -6,14 +6,18 @@ import Transaction from "../models/transactionModel.js";
 
 export function verifyPhonePeWebhookAuth(req) {
   const authHeader = req.headers["authorization"];
-  console.log("Authorization header from PhonePe:", authHeader);
-
   if (!authHeader) return false;
 
-  const expected = `SHA256(${process.env.PHONEPE_WEBHOOK_USERNAME}:${process.env.PHONEPE_WEBHOOK_PASSWORD})`;
+  const expectedHash = crypto
+    .createHash("sha256")
+    .update(
+      `${process.env.PHONEPE_WEBHOOK_USERNAME}:${process.env.PHONEPE_WEBHOOK_PASSWORD}`
+    )
+    .digest("hex");
 
-  return authHeader === expected;
+  return authHeader === expectedHash;
 }
+
 
 const phonepeWebhook = asyncHandler(async (req, res) => {
 
