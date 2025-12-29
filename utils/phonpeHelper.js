@@ -1,25 +1,21 @@
 // utils/phonepeHelper.js
 import axios from "axios";
+import { redisClient } from '../config/redisClient.js';
 
-/**
- * Simple in-memory token cache
- * PhonePe OAuth tokens are reusable until expiry
- */
-let cachedToken = null;
-let tokenExpiryTime = 0;
+const PHONEPE_TOKEN_KEY = "phonepe:oauth:token";
+const EXPIRY_BUFFER_SECONDS = 300; // 5 min safety buffer
 
-/**
- * Get PhonePe OAuth Token (cached + safe)
- */
 export async function getPhonePeAuthToken() {
-  const now = Date.now();
-
-  // Reuse token if valid (keep 5 min buffer)
-  if (cachedToken && now < tokenExpiryTime - 5 * 60 * 1000) {
-    return cachedToken;
-  }
-
   try {
+    // Check Redis cache
+    if (redisClient?.isOpen) {
+      const cachedToken = await redisClient.get(PHONEPE_TOKEN_KEY);
+      if (cachedToken) {
+        return cachedToken;
+      }
+    }
+
+    // Fetch new token from PhonePe
     const data = new URLSearchParams();
     data.append("grant_type", process.env.PHONEPE_GRANT_TYPE);
     data.append("client_id", process.env.PHONEPE_CLIENT_ID);
@@ -37,33 +33,44 @@ export async function getPhonePeAuthToken() {
       }
     );
 
-    cachedToken = res.data.access_token;
-    tokenExpiryTime = now + res.data.expires_in * 1000;
+    const { access_token, expires_in } = res.data || {};
 
-    return cachedToken;
+    if (!access_token || !expires_in) {
+      throw new Error("Invalid PhonePe auth response");
+    }
+
+    // Store token in Redis with TTL
+    if (redisClient?.isOpen) {
+      const ttl = Math.max(expires_in - EXPIRY_BUFFER_SECONDS, 60);
+
+      await redisClient.set(
+        PHONEPE_TOKEN_KEY,
+        access_token,
+        { EX: ttl }
+      );
+    }
+
+    return access_token;
+
   } catch (error) {
-    console.error(
-      "PhonePe Auth Error:",
-      error.response?.data || error.message
-    );
+    console.error("❌ PhonePe Auth Error", {
+      error: error.response?.data || error.message,
+    });
     throw new Error("Failed to authenticate with PhonePe");
   }
 }
 
-/**
- * Initiate PhonePe Standard Checkout payment
- */
 export async function initiatePhonePePayment(merchantOrderId, amount) {
   try {
     const accessToken = await getPhonePeAuthToken();
 
     const paymentData = {
       merchantOrderId,
-      amount, // in paise
+      amount,
       paymentFlow: {
         type: "PG_CHECKOUT",
         merchantUrls: {
-          redirectUrl: `${process.env.BACKEND_URL}/api/payment/status?id=${merchantOrderId}`,
+          redirectUrl: `${process.env.FRONTEND_URL}?id=${merchantOrderId}`, //Not used because of iframe mode of payment in frontend
         },
       },
     };
@@ -90,9 +97,6 @@ export async function initiatePhonePePayment(merchantOrderId, amount) {
   }
 }
 
-/**
- * Fetch payment status from PhonePe
- */
 export async function getPhonePePaymentStatus(merchantOrderId) {
   try {
     const accessToken = await getPhonePeAuthToken();
@@ -110,9 +114,14 @@ export async function getPhonePePaymentStatus(merchantOrderId) {
     return res.data;
   } catch (error) {
     console.error(
-      "PhonePe Status Check Error:",
-      error.response?.data || error.message
+      "PhonePe Status Check Error:",{
+        merchantOrderId,
+        error: error.response?.data || error.message
+      }
     );
     throw new Error("Unable to fetch PhonePe payment status");
   }
 }
+
+
+// ----------------checked----------------
