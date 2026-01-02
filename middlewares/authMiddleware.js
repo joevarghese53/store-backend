@@ -40,7 +40,7 @@ const authenticate = asyncHandler(async (req, res, next) => {
   } catch (err) {
     res.status(401);
     console.error("Authentication error:", err);
-    throw new Error("Not authorized, token failed", err);
+    throw new Error("Not authorized, token failed");
   }
 });
 
@@ -55,3 +55,6 @@ const authorizeAdmin = (req, res, next) => {
 };
 
 export { authenticate, authorizeAdmin };
+
+
+// ------------- Checked --------------------
