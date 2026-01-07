@@ -5,24 +5,15 @@ import {
   updateCurrentUserProfile, deleteUserById, getUserById, updateUserById, generateResetPasswordLink, resetPassword
 } from "../controllers/userController.js";
 import { authenticate, authorizeAdmin } from "../middlewares/authMiddleware.js";
-import { createRateLimiter } from "../utils/rateLimit.js";
-
-// RateLimiters
-const initiateRegistrationLimiter = createRateLimiter({
-  windowMs: 60 * 1000, // 1 minute
-  max: 5,
-  message: "Too many OTP requests. Try again in a minute."
-});
-
-const refreshLimiter = createRateLimiter({ windowMs: 60*1000, max: 30 });
+import { rateLimiters } from "../utils/rateLimiters.js";
 
 const router = express.Router();
 
-router.post("/initiate-registration", initiateRegistrationLimiter, initiateRegistration);
+router.post("/initiate-registration", rateLimiters.initiateRegistrationLimiter, initiateRegistration);
 router.post("/register", createUser)
 router.post("/login", loginUser);
 router.post("/logout", logoutCurrentUser);
-router.post("/refresh-token" , refreshLimiter, refreshAccessToken);
+router.post("/refresh-token" , rateLimiters.refreshLimiter, refreshAccessToken);
 router
   .route("/profile")
   .get(authenticate, getCurrentUserProfile)

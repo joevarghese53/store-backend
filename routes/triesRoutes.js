@@ -6,16 +6,12 @@ import {
     initiatePayment,
 } from "../controllers/triesController.js";
 import { authenticate } from "../middlewares/authMiddleware.js";
-import { createRateLimiter } from "../utils/rateLimit.js";
+import { rateLimiters } from "../utils/rateLimiters.js";
 
 const router = express.Router();
-const purchaseTriesLimiter = createRateLimiter({
-  windowMs: 60 * 1000,
-  max: 5,
-});
 
 router.route("/").get(authenticate, getUserTries);
 router.route("/use").put(authenticate, useTry);
-router.route("/purchase-tries").post(authenticate, purchaseTriesLimiter, initiatePayment);
+router.route("/purchase-tries").post(authenticate, rateLimiters.purchaseTriesLimiter, initiatePayment);
 
 export default router;

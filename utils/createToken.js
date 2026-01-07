@@ -29,3 +29,5 @@ const generateTokens = async (req, res, userId) => {
 };
 
 export default generateTokens;
+
+// ---------- Checked ----------

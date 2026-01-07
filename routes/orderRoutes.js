@@ -1,8 +1,5 @@
 //orderRoutes.js
-
 import express from "express";
-const router = express.Router();
-
 import {
   createOrder,
   getAllOrders,
@@ -20,21 +17,16 @@ import {
   initiatePayment,
   checkPaymentStatus,
 } from "../controllers/orderController.js";
-
-import { createRateLimiter } from "../utils/rateLimit.js";
 import { authenticate, authorizeAdmin } from "../middlewares/authMiddleware.js";
+import { rateLimiters } from "../utils/rateLimiters.js";
 
-const paymentLimiter = createRateLimiter({
-  windowMs: 60 * 1000,  // 1 minute
-  max: 5,
-  message: "Too many payment attempts. Try again later."
-});
+const router = express.Router();
 
 router
   .route("/")
   .post(authenticate, createOrder)
   .get(authenticate, authorizeAdmin, getAllOrders);
-router.route("/initiate-payment").post(authenticate, paymentLimiter, initiatePayment);
+router.route("/initiate-payment").post(authenticate, rateLimiters.paymentLimiter, initiatePayment);
 router.route("/status").post(checkPaymentStatus).get(checkPaymentStatus);
 router.route("/mine").get(authenticate, getUserOrders);
 router.route("/total-orders").get(authenticate, authorizeAdmin, countTotalOrdersByDate);

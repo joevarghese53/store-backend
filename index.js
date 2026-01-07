@@ -3,12 +3,11 @@ import express from "express";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import { initRateLimiters } from "./utils/rateLimiters.js";
 
 import connectDB from "./config/db.js";
-import {connectRedis} from "./config/redisClient.js"
+import {connectRedis, redisClient} from "./config/redisClient.js"
 import mongoose from "mongoose";
-import {redisClient} from "./config/redisClient.js"
-
 import userRoutes from "./routes/userRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
@@ -69,6 +68,7 @@ const startServer = async () => {
   try {
     await connectDB();
     await connectRedis();
+    initRateLimiters(); // Initialize rate limiters after Redis connection
 
     app.listen(port, () => {
       console.log(`🚀 Server running on port ${port}`);
