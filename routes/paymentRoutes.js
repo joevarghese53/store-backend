@@ -6,3 +6,5 @@ import { checkPaymentStatus } from "../controllers/paymentController.js";
 router.get("/status", checkPaymentStatus);
 
 export default router;
+
+// ------------- Checked -----------------

@@ -15,6 +15,9 @@ export function verifyPhonePeWebhookAuth(req) {
         )
         .digest("hex");
 
+    console.log("Auth Header:", authHeader);
+    console.log("Expected Hash:", expectedHash);
+
     return crypto.timingSafeEqual(
         Buffer.from(authHeader),
         Buffer.from(expectedHash)
@@ -24,47 +27,55 @@ export function verifyPhonePeWebhookAuth(req) {
 
 const phonepeWebhook = asyncHandler(async (req, res) => {
 
+    console.log("Received PhonePe Webhook:", req.body);
+
     // Verify Authorization header
     if (!verifyPhonePeWebhookAuth(req)) {
-        console.warn("❌ Invalid PhonePe webhook authorization");
         return res.status(401).send("Unauthorized");
     }
 
-    // Acknowledge receipt
+    // Acknowledge immediately
     res.status(200).send("OK");
 
     try {
         // Extract Payload
         const { merchantOrderId, state } = req.body.payload || {};
         if (!merchantOrderId || !state) {
-            console.warn("❌ PhonePe webhook missing data", req.body);
             return;
         }
 
         // Find and Update Transaction
         const txn = await Transaction.findOneAndUpdate(
-            { merchantOrderId, fulfilled: false },
-            { $set: { status: state } },
+            {
+                merchantOrderId,
+                fulfilled: false,
+                status: { $ne: "SUCCESS" },
+            },
+            {
+                status: state === "COMPLETED" ? "SUCCESS" : state.toUpperCase(),
+                fulfilled: state === "COMPLETED",
+                fulfilledAt: state === "COMPLETED" ? new Date() : undefined,
+            },
             { new: true }
         );
         if (!txn) {
-            return;
+            return
         }
 
         // Credit user based on service type
-        if (state === "COMPLETED") {
+        if (txn.status === "SUCCESS") {
             switch (txn.service) {
                 case "TRIES_PURCHASE":
                     await applyPurchasedTries(txn.userId, txn.triesToPurchase);
-                    txn.fulfilled = true;
-                    txn.status = "COMPLETED";
-                    await txn.save();
+                    console.log(`Applied ${txn.triesToPurchase} purchased tries to user ${txn.userId} from webhook.`);
                     break;
-
             }
         }
+
+        return 
     } catch (error) {
-        console.error("❌ PhonePe webhook processing error", error);
+        console.error("❌ PhonePe webhook error", error);
+        return
     }
 });
 

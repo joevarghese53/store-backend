@@ -1,4 +1,3 @@
-// models/transactionModel.js
 import mongoose from "mongoose";
 
 const transactionSchema = mongoose.Schema(
@@ -7,7 +6,6 @@ const transactionSchema = mongoose.Schema(
       type: String,
       required: true,
       unique: true,
-      index: true,
     },
 
     userId: {
@@ -28,16 +26,18 @@ const transactionSchema = mongoose.Schema(
 
     triesToPurchase: {
       type: Number,
+      min: 1,
     },
 
     amount: {
-      type: Number, // in paise
+      type: Number,
+      min: 0,
       required: true,
     },
 
     status: {
       type: String,
-      enum: ["INITIATED", "PENDING", "COMPLETED", "FAILED"],
+      enum: ["INITIATED", "PENDING", "SUCCESS", "FAILED"],
       default: "INITIATED",
       index: true,
     },
@@ -47,10 +47,18 @@ const transactionSchema = mongoose.Schema(
       default: false,
     },
 
+    fulfilledAt: {
+      type: Date,
+    },
   },
   { timestamps: true }
 );
 
-const Transaction = mongoose.model("Transaction", transactionSchema);
+// Optimized for webhook idempotency checks
+transactionSchema.index(
+  { merchantOrderId: 1, status: 1, fulfilled: 1 }
+);
 
-export default Transaction;
+export default mongoose.model("Transaction", transactionSchema);
+
+// ------------------------Checked -------------------------
