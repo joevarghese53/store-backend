@@ -6,14 +6,21 @@ import { initiatePhonePePayment } from "../utils/phonpeHelper.js";
 // ---------- Core Helpers ----------
 
 const applyPurchasedTries = async (userId, triesToPurchase) => {
-  const tries = await Tries.findOne({ user: userId });
-  if (!tries) {
+  const updated = await Tries.findOneAndUpdate(
+    { user: userId },
+    {
+      $inc: { purchasedTriesRemaining: Number(triesToPurchase) },
+      $setOnInsert: { freeTriesRemaining: 5 }
+    },
+    { new: true, upsert: true }
+  );
+
+
+  if (!updated) {
     throw new Error("Tries not found");
   }
 
-  tries.purchasedTriesRemaining += Number(triesToPurchase);
-  await tries.save();
-  return tries.purchasedTriesRemaining;
+  return updated.purchasedTriesRemaining;
 };
 
 // ---------- Controllers ----------
@@ -24,12 +31,11 @@ const applyPurchasedTries = async (userId, triesToPurchase) => {
 const getUserTries = asyncHandler(async (req, res) => {
   const userId = req.user._id;
 
-  const tries = await Tries.findOne({ user: userId });
-
-  if (!tries) {
-    res.status(404);
-    throw new Error("Not found");
-  }
+  const tries = await Tries.findOneAndUpdate(
+    { user: userId },
+    { $setOnInsert: { freeTriesRemaining: 5, purchasedTriesRemaining: 0 } },
+    { upsert: true, new: true }
+  );
 
   res.status(200).json({
     freeTriesRemaining: tries.freeTriesRemaining,
@@ -43,25 +49,31 @@ const getUserTries = asyncHandler(async (req, res) => {
 const useTry = asyncHandler(async (req, res) => {
   const userId = req.user._id;
 
-  const tries = await Tries.findOne({ user: userId });
+  // Try to consume a free try first
+  let result = await Tries.findOneAndUpdate(
+    { user: userId, freeTriesRemaining: { $gt: 0 } },
+    { $inc: { freeTriesRemaining: -1 } },
+    { new: true }
+  );
 
-  if (!tries || (tries.freeTriesRemaining <= 0 && tries.purchasedTriesRemaining <= 0)) {
+  // If no free tries, try purchased
+  if (!result) {
+    result = await Tries.findOneAndUpdate(
+      { user: userId, purchasedTriesRemaining: { $gt: 0 } },
+      { $inc: { purchasedTriesRemaining: -1 } },
+      { new: true }
+    );
+  }
+
+  if (!result) {
     res.status(400);
     throw new Error("No tries remaining!");
   }
 
-  if (tries.freeTriesRemaining > 0) {
-    tries.freeTriesRemaining -= 1;
-  } else {
-    tries.purchasedTriesRemaining -= 1;
-  }
-
-  await tries.save();
-
   res.status(200).json({
     message: "Try used successfully",
-    freeTriesRemaining: tries.freeTriesRemaining,
-    purchasedTriesRemaining: tries.purchasedTriesRemaining,
+    freeTriesRemaining: result.freeTriesRemaining,
+    purchasedTriesRemaining: result.purchasedTriesRemaining,
   });
 });
 
@@ -134,3 +146,5 @@ export {
   applyPurchasedTries,
   initiatePayment,
 };
+
+// ------------------------Checked -------------------------

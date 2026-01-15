@@ -15,3 +15,5 @@ router.route("/use").put(authenticate, useTry);
 router.route("/purchase-tries").post(authenticate, rateLimiters.purchaseTriesLimiter, initiatePayment);
 
 export default router;
+
+// ------------------------Checked -------------------------
