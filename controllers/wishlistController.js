@@ -6,23 +6,22 @@ import asyncHandler from "../middlewares/asyncHandler.js";
 // @route   GET /api/wishlist
 // @access  Private
 const getWishlist = asyncHandler(async (req, res) => {
-  const wishlist = await Wishlist.findOne({ userId: req.user._id }).populate({
-    path: "items.productId",
-    populate: {
-      path: "category",
-    },
-  });
+  const wishlist = await Wishlist.findOne({ userId: req.user._id })
+    .populate({
+      path: "items",
+      populate: { path: "category" },
+    });
 
   if (!wishlist) {
-    // Return an empty list instead of 404 so frontend can handle it easily
     return res.json({
       userId: req.user._id,
       items: [],
     });
   }
 
-  res.json(wishlist.toObject());
+  res.json(wishlist);
 });
+
 
 // @desc    Add product to wishlist
 // @route   POST /api/wishlist
@@ -32,33 +31,20 @@ const addToWishlist = asyncHandler(async (req, res) => {
 
   if (!productId) {
     res.status(400);
-    throw new Error("Product ID is required.");
+    throw new Error("Product ID is required");
   }
 
-  let wishlist = await Wishlist.findOne({ userId: req.user._id });
+  const wishlist = await Wishlist.findOneAndUpdate(
+    { userId: req.user._id },
+    {
+      $addToSet: { items: productId },
+    },
+    { new: true, upsert: true }
+  );
 
-  if (!wishlist) {
-    // Create wishlist if user doesn't have one yet
-    wishlist = new Wishlist({
-      userId: req.user._id,
-      items: [{ productId }],
-    });
-  } else {
-    const itemExists = wishlist.items.some(
-      (item) => item.productId.toString() === productId
-    );
-
-    if (itemExists) {
-      res.status(400);
-      throw new Error("Product is already in the wishlist.");
-    }
-
-    wishlist.items.push({ productId });
-  }
-
-  const savedWishlist = await wishlist.save();
-  res.status(201).json(savedWishlist);
+  res.status(201).json(wishlist);
 });
+
 
 // @desc    Remove one product from current user's wishlist
 // @route   DELETE /api/wishlist/:productId
@@ -66,28 +52,20 @@ const addToWishlist = asyncHandler(async (req, res) => {
 const removeFromWishlist = asyncHandler(async (req, res) => {
   const { productId } = req.params;
 
-  const wishlist = await Wishlist.findOne({ userId: req.user._id });
+  const wishlist = await Wishlist.findOneAndUpdate(
+    { userId: req.user._id },
+    { $pull: { items: productId } },
+    { new: true }
+  );
 
   if (!wishlist) {
     res.status(404);
     throw new Error("Wishlist not found");
   }
 
-  const originalLength = wishlist.items.length;
-
-  wishlist.items = wishlist.items.filter(
-    (item) => item.productId.toString() !== productId
-  );
-
-  if (wishlist.items.length === originalLength) {
-    // Nothing was removed
-    res.status(404);
-    throw new Error("Product not found in wishlist");
-  }
-
-  await wishlist.save();
   res.json(wishlist);
 });
+
 
 // @desc    Check if a product is in current user's wishlist
 // @route   GET /api/wishlist/:productId
@@ -95,22 +73,12 @@ const removeFromWishlist = asyncHandler(async (req, res) => {
 const checkItemInWishlist = asyncHandler(async (req, res) => {
   const { productId } = req.params;
 
-  if (!productId) {
-    res.status(400);
-    throw new Error("Product ID is required.");
-  }
+  const exists = await Wishlist.exists({
+    userId: req.user._id,
+    items: productId,
+  });
 
-  const wishlist = await Wishlist.findOne({ userId: req.user._id });
-
-  if (!wishlist) {
-    return res.json({ exists: false });
-  }
-
-  const itemExists = wishlist.items.some(
-    (item) => item.productId.toString() === productId
-  );
-
-  res.json({ exists: itemExists });
+  res.json({ exists: Boolean(exists) });
 });
 
 // @desc    Remove a product from all users' wishlists (admin)
@@ -119,17 +87,16 @@ const checkItemInWishlist = asyncHandler(async (req, res) => {
 const removeFromAllWishlist = asyncHandler(async (req, res) => {
   const { productId } = req.params;
 
+  console.log("Removing product from all wishlists:", productId);
+
   await Wishlist.updateMany(
     {},
-    {
-      $pull: {
-        items: { productId },
-      },
-    }
+    { $pull: { items: productId } }
   );
 
   res.json({ success: true });
 });
+
 
 export {
   getWishlist,

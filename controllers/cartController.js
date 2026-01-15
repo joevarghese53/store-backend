@@ -248,6 +248,7 @@ const removeAllOfProductFromCart = asyncHandler(async (req, res) => {
 const removeAllOfProductFromAllOfCart = asyncHandler(async (req, res) => {
   const { productId } = req.params;
 
+  console.log("Removing product from all carts:", productId);
   if (!productId) {
     return res.status(400).json({ message: "Product ID is required" });
   }

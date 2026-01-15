@@ -6,17 +6,19 @@ const wishlistSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId, 
         ref: 'User', 
         required: true,
-        unique: true
+        unique: true,
+        index: true
     },
-    items: [
-        {
-            productId: { 
-                type: mongoose.Schema.Types.ObjectId, 
-                ref: 'Product', 
-                required: true 
-            }
-        }
-    ],
-});
+    items: [{ type: mongoose.Schema.Types.ObjectId, ref: "Product" }],
+},
+{ timestamps: true }
+);
+
+wishlistSchema.index(
+  { userId: 1, items: 1 },
+  { unique: true }
+);
 
 export default mongoose.model("Wishlist", wishlistSchema);
+
+// ----------------Checked------------------
