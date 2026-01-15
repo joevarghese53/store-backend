@@ -5,7 +5,6 @@ import { applyPurchasedTries } from "./triesController.js";
 
 const checkPaymentStatus = asyncHandler(async (req, res) => {
 
-  console.log("Checking payment status for:", req.query);
   // Validate input
   const merchantOrderId = req.query.id;
   if (!merchantOrderId) {
@@ -33,7 +32,7 @@ const checkPaymentStatus = asyncHandler(async (req, res) => {
   // Fulfill ONLY if webhook hasn't already done it
   if (normalizedStatus === "SUCCESS") {
     const updated = await Transaction.findOneAndUpdate(
-      { merchantOrderId, fulfilled: false },
+      { merchantOrderId, fulfilled: false, status: { $ne: "SUCCESS" } },
       {
         status: "SUCCESS",
         fulfilled: true,
@@ -42,9 +41,12 @@ const checkPaymentStatus = asyncHandler(async (req, res) => {
       { new: true }
     );
 
-    if (updated && updated.service === "TRIES_PURCHASE") {
-      await applyPurchasedTries(updated.userId, updated.triesToPurchase);
-      console.log(`Applied ${updated.triesToPurchase} purchased tries to user ${updated.userId} after status check.`);
+    if (updated) {
+      switch (updated.service) {
+        case "TRIES_PURCHASE":
+          await applyPurchasedTries(updated.userId, updated.triesToPurchase);
+          break;
+      }
     }
   } else if (txn.status !== normalizedStatus) {
     await Transaction.updateOne(

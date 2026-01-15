@@ -15,9 +15,6 @@ export function verifyPhonePeWebhookAuth(req) {
         )
         .digest("hex");
 
-    console.log("Auth Header:", authHeader);
-    console.log("Expected Hash:", expectedHash);
-
     return crypto.timingSafeEqual(
         Buffer.from(authHeader),
         Buffer.from(expectedHash)
@@ -26,8 +23,6 @@ export function verifyPhonePeWebhookAuth(req) {
 
 
 const phonepeWebhook = asyncHandler(async (req, res) => {
-
-    console.log("Received PhonePe Webhook:", req.body);
 
     // Verify Authorization header
     if (!verifyPhonePeWebhookAuth(req)) {
@@ -43,6 +38,7 @@ const phonepeWebhook = asyncHandler(async (req, res) => {
         if (!merchantOrderId || !state) {
             return;
         }
+        const normalizedState = state === "COMPLETED" ? "SUCCESS" : state.toUpperCase();
 
         // Find and Update Transaction
         const txn = await Transaction.findOneAndUpdate(
@@ -52,9 +48,9 @@ const phonepeWebhook = asyncHandler(async (req, res) => {
                 status: { $ne: "SUCCESS" },
             },
             {
-                status: state === "COMPLETED" ? "SUCCESS" : state.toUpperCase(),
-                fulfilled: state === "COMPLETED",
-                fulfilledAt: state === "COMPLETED" ? new Date() : undefined,
+                status: normalizedState,
+                fulfilled: normalizedState === "SUCCESS",
+                fulfilledAt: normalizedState === "SUCCESS" ? new Date() : undefined,
             },
             { new: true }
         );
@@ -67,7 +63,6 @@ const phonepeWebhook = asyncHandler(async (req, res) => {
             switch (txn.service) {
                 case "TRIES_PURCHASE":
                     await applyPurchasedTries(txn.userId, txn.triesToPurchase);
-                    console.log(`Applied ${txn.triesToPurchase} purchased tries to user ${txn.userId} from webhook.`);
                     break;
             }
         }
