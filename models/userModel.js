@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 const userSchema = mongoose.Schema(
   {
     username: { type: String, required: true, trim: true },
-    email: { type: String, required: true, unique: true, trim: true, lowercase: true, match: [/^\S+@\S+\.\S+$/, "Invalid email"] },
+    email: { type: String, required: true, trim: true, lowercase: true, match: [/^\S+@\S+\.\S+$/, "Invalid email"] },
     password: { type: String, required: true, select: false },
     isAdmin: { type: Boolean, default: false },
     resetPasswordToken: { type: String },
