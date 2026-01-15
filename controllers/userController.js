@@ -34,10 +34,6 @@ const initiateRegistration = asyncHandler(async (req, res) => {
     throw new Error("User with this email already exists.");
   }
 
-  // Hash password before storing anywhere
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(password, salt);
-
   //Redis Keys
   const registrationKey = `registration:${normalizedEmail}`;
   const otpKey = `otp:email:${normalizedEmail}`;
@@ -49,7 +45,7 @@ const initiateRegistration = asyncHandler(async (req, res) => {
     const tempData = {
       username,
       email: normalizedEmail,
-      password: hashedPassword,
+      password: password,
     };
     await redisClient.setEx(registrationKey, 300, JSON.stringify(tempData));
 
@@ -144,7 +140,7 @@ const createUser = asyncHandler(async (req, res) => {
   const newUser = new User({
     username,
     email: storedEmail,
-    password, // already hashed
+    password, // Will be hashed by pre-save hook
   });
   await newUser.save();
 
@@ -185,7 +181,7 @@ const loginUser = asyncHandler(async (req, res) => {
 
   const normalizedEmail = email.toLowerCase();
   const existingUser = await User.findOne({ email: normalizedEmail }).select("+password");
-  console.log("user", existingUser)
+
   if (!existingUser) {
     res.status(401);
     throw new Error("Invalid email or password.");
@@ -234,8 +230,6 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     // Clear cookie to remove bad token client-side
     res.clearCookie("refreshToken", { path: "/api/users/refresh-token" });
 
-    // Optional: If you keep additional identifiers (deviceId) in cookie you could revoke all tokens for that user.
-    // But with opaque tokens alone we can't map an unknown token to a user safely.
     res.status(401);
     throw new Error("Invalid refresh token");
   }
@@ -348,8 +342,7 @@ const updateCurrentUserProfile = asyncHandler(async (req, res) => {
   user.email = email || user.email;
 
   if (password) {
-    const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(password, salt);
+    user.password = password;
   }
 
   const updatedUser = await user.save();
@@ -449,8 +442,7 @@ const resetPassword = asyncHandler(async (req, res) => {
     throw new Error("Invalid or expired token");
   }
 
-  const salt = await bcrypt.genSalt(10);
-  user.password = await bcrypt.hash(newPassword, salt);
+  user.password = newPassword;
   user.resetPasswordToken = undefined;
   user.resetPasswordExpires = undefined;
 
@@ -464,7 +456,7 @@ const resetPassword = asyncHandler(async (req, res) => {
 // @route   GET /api/users/admin/allUsers
 // @access  Admin
 const getAllUsers = asyncHandler(async (req, res) => {
-  const users = await User.find({});
+  const users = await User.find({}).select("-password -resetPasswordToken -resetPasswordExpires");
   res.status(200).json(users);
 });
 
@@ -495,14 +487,12 @@ const updateUserById = asyncHandler(async (req, res) => {
 
   user.username = req.body.username || user.username;
   user.email = req.body.email || user.email;
-  user.isAdmin = Boolean(user.isAdmin);
   const updatedUser = await user.save();
 
   res.json({
     _id: updatedUser._id,
     username: updatedUser.username,
     email: updatedUser.email,
-    isAdmin: updatedUser.isAdmin,
   });
 });
 
