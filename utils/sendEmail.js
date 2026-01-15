@@ -1,3 +1,4 @@
+// utils/sendEmail.js
 const sendEmail = async ({ to, name = "User", subject, html }) => {
   try {
     const response = await fetch("https://api.zeptomail.in/v1.1/email", {
@@ -21,6 +22,7 @@ const sendEmail = async ({ to, name = "User", subject, html }) => {
         ],
         subject,
         htmlbody: html,
+        textbody: html.replace(/<[^>]*>/g, ""),
       }),
     });
 
@@ -40,3 +42,5 @@ const sendEmail = async ({ to, name = "User", subject, html }) => {
 };
 
 export default sendEmail;
+
+// ----------------Checked------------------

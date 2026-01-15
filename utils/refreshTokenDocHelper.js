@@ -7,7 +7,9 @@ const createRandomString = () => crypto.randomBytes(64).toString("hex");
 
 export async function createRefreshTokenDoc({ userId, ip = "", userAgent = "", ttlMs = 7*24*60*60*1000, bufferMs = 24*60*60*1000 }) {
   // Try up to N times to create a unique token; always regenerate plain+hash together
-  for (let i = 0; i < 3; i++) {
+  const MAX_RETRIES = 3;
+  
+  for (let i = 0; i < MAX_RETRIES; i++) {
     const plain = createRandomString();
     const tokenHash = hashToken(plain);
 
@@ -35,3 +37,6 @@ export async function createRefreshTokenDoc({ userId, ip = "", userAgent = "", t
   }
   throw new Error("Failed to create unique refresh token after retries");
 }
+
+
+// ----------------Checked------------------
