@@ -15,7 +15,6 @@ import {
   markOrderAsShipped,
   markOrderAsOutForDelivery,
   initiatePayment,
-  checkPaymentStatus,
 } from "../controllers/orderController.js";
 import { authenticate, authorizeAdmin } from "../middlewares/authMiddleware.js";
 import { rateLimiters } from "../utils/rateLimiters.js";
@@ -27,7 +26,6 @@ router
   .post(authenticate, createOrder)
   .get(authenticate, authorizeAdmin, getAllOrders);
 router.route("/initiate-payment").post(authenticate, rateLimiters.paymentLimiter, initiatePayment);
-router.route("/status").post(checkPaymentStatus).get(checkPaymentStatus);
 router.route("/mine").get(authenticate, getUserOrders);
 router.route("/total-orders").get(authenticate, authorizeAdmin, countTotalOrdersByDate);
 router.route("/total-sales").get(authenticate, authorizeAdmin, calculateTotalSales);

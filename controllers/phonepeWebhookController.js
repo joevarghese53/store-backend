@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { applyPurchasedTries } from "./triesController.js";
 import asyncHandler from "../middlewares/asyncHandler.js";
 import Transaction from "../models/transactionModel.js";
+import { markOrderAsPaid } from "./orderController.js";
 
 export function verifyPhonePeWebhookAuth(req) {
     const authHeader = req.headers["authorization"];
@@ -23,7 +24,7 @@ export function verifyPhonePeWebhookAuth(req) {
 
 
 const phonepeWebhook = asyncHandler(async (req, res) => {
-
+    console.log("Inside Webhook");
     // Verify Authorization header
     if (!verifyPhonePeWebhookAuth(req)) {
         return res.status(401).send("Unauthorized");
@@ -68,13 +69,14 @@ const phonepeWebhook = asyncHandler(async (req, res) => {
                     break;
 
                     case "PRODUCT_PURCHASE":
+                        const orderId = merchantOrderId.split("_")[1];
                         const paymentData = {
                           transaction_id: payload.paymentDetails.transactionId,
                           state: payload.paymentDetails.state,
                           payment_method: payload.paymentDetails.paymentMode,
                           amount_paid: payload.paymentDetails.amount
                         }
-                        await markOrderAsPaid(merchantOrderId, paymentData);
+                        await markOrderAsPaid(orderId, paymentData);
                         break;
             }
         }

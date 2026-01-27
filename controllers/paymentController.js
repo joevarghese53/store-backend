@@ -42,6 +42,8 @@ const checkPaymentStatus = asyncHandler(async (req, res) => {
       { new: true }
     );
 
+    console.log("Transaction updated after status check:", updated);
+
     if (updated) {
       switch (updated.service) {
         case "TRIES_PURCHASE":
@@ -49,13 +51,14 @@ const checkPaymentStatus = asyncHandler(async (req, res) => {
           break;
 
         case "PRODUCT_PURCHASE":
+          const orderId = merchantOrderId.split("_")[1];
           const paymentData = {
             transaction_id: statusRes.paymentDetails.transactionId,
             state: statusRes.paymentDetails.state,
             payment_method: statusRes.paymentDetails.paymentMode,
             amount_paid: statusRes.paymentDetails.amount
           }
-          await markOrderAsPaid(merchantOrderId, paymentData);
+          await markOrderAsPaid(orderId, paymentData);
           break;
       }
     }

@@ -129,26 +129,31 @@ const createOrder = asyncHandler(async (req, res) => {
 });
 
 const initiatePayment = asyncHandler(async (req, res) => {
-  // Validate request body
-  const { merchantOrderId } = req.body;
+  const { orderId } = req.body;
   const userId = req.user._id;
-  if (!merchantOrderId) {
+
+  if (!orderId) {
     res.status(400);
     throw new Error("Order ID is required");
   }
+
   if (!userId) {
     res.status(400);
     throw new Error("User not authenticated");
   }
-  const amount = Order.findById(merchantOrderId).then(order => {
-    if (!order) {
-      res.status(404);
-      throw new Error("Order not found");
-    }
-    return order.totalPrice * 100; // in paise
-  });
 
-  // Add Txn to DB
+  // ✅ Fetch order FIRST
+  const order = await Order.findById(orderId);
+  if (!order) {
+    res.status(404);
+    throw new Error("Order not found");
+  }
+  const amount = order.totalPrice * 100;
+
+  const merchantOrderId = `OD_${orderId}_${Date.now()}`;
+  console.log("Generated Merchant Order ID:", merchantOrderId);
+
+  // ✅ Save transaction
   await Transaction.create({
     merchantOrderId,
     userId,
@@ -158,13 +163,13 @@ const initiatePayment = asyncHandler(async (req, res) => {
     fulfilled: false,
   });
 
-  // Initiate Payment
+  // ✅ Initiate PhonePe payment
   const response = await initiatePhonePePayment(merchantOrderId, amount);
 
   res.json({
     success: true,
     redirectUrl: response.redirectUrl,
-    merchantOrderId
+    merchantOrderId,
   });
 });
 
