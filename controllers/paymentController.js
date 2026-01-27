@@ -58,6 +58,7 @@ const checkPaymentStatus = asyncHandler(async (req, res) => {
             payment_method: statusRes.paymentDetails.paymentMode,
             amount_paid: statusRes.paymentDetails.amount
           }
+          console.log("Marking order as paid for Order ID:", orderId, paymentData);
           await markOrderAsPaid(orderId, paymentData);
           break;
       }
