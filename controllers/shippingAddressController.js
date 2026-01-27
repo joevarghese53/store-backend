@@ -1,12 +1,7 @@
-// controllers/shippingAddressController.js
 import ShippingAddress from "../models/shippingAddressModel.js";
 import asyncHandler from "../middlewares/asyncHandler.js";
 
-// @desc    Create new shipping address
-// @route   POST /api/shipping
-// @access  Private
 const createShippingAddress = asyncHandler(async (req, res) => {
-  const { address, city, postalCode, state, country, phoneno, fullName, label } = req.body;
   const userId = req.user?._id;
 
   if (!userId) {
@@ -14,61 +9,75 @@ const createShippingAddress = asyncHandler(async (req, res) => {
     throw new Error("User not authenticated");
   }
 
-  // Basic validation – you can expand this if you want stricter checks
-  if (!fullName || !address || !city || !postalCode || !state || !country || !phoneno) {
+  const {
+    fullName,
+    addressLine1,
+    addressLine2,
+    landmark,
+    city,
+    state,
+    postalCode,
+    phoneNumber,
+    label,
+  } = req.body;
+
+  console.log(req.body);
+  if (!fullName || !addressLine1 || !city || !state || !postalCode || !phoneNumber) {
     res.status(400);
     throw new Error("All required address fields must be provided");
   }
 
-  // Count how many addresses the user already has
   const existingCount = await ShippingAddress.countDocuments({ user: userId });
 
-  const newAddress = new ShippingAddress({
+  const address = await ShippingAddress.create({
     user: userId,
     fullName,
-    address,
+    addressLine1,
+    addressLine2,
+    landmark,
     city,
-    postalCode,
     state,
-    country,
-    phoneno,
+    postalCode,
+    phoneNumber,
     label: label || "Home",
-    isDefault: existingCount === 0, // first address becomes default
+    isDefault: existingCount === 0,
   });
 
-  const savedAddress = await newAddress.save();
-  res.status(201).json(savedAddress);
+  res.status(201).json(address);
 });
 
-// @desc    Get all shipping addresses for current user
-// @route   GET /api/shipping
-// @access  Private
 const getUserShippingAddresses = asyncHandler(async (req, res) => {
-  const userId = req.user?._id;
-
-  if (!userId) {
-    res.status(401);
-    throw new Error("User not authenticated");
-  }
-
-  const addresses = await ShippingAddress.find({ user: userId }).sort({
-    isDefault: -1, // default address first
+  const addresses = await ShippingAddress.find({ user: req.user._id }).sort({
+    isDefault: -1,
     createdAt: -1,
   });
 
   res.json(addresses);
 });
 
-// @desc    Update a shipping address (only own)
-// @route   PUT /api/shipping/:id
-// @access  Private
 const updateShippingAddress = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { fullName, address, city, postalCode, state, country, phoneno, label } = req.body;
+
+  const updateData = {
+    fullName: req.body.fullName,
+    addressLine1: req.body.addressLine1,
+    addressLine2: req.body.addressLine2,
+    landmark: req.body.landmark,
+    city: req.body.city,
+    state: req.body.state,
+    postalCode: req.body.postalCode,
+    phoneNumber: req.body.phoneNumber,
+    label: req.body.label,
+  };
+
+  // Remove undefined fields
+  Object.keys(updateData).forEach(
+    (key) => updateData[key] === undefined && delete updateData[key]
+  );
 
   const updatedAddress = await ShippingAddress.findOneAndUpdate(
-    { _id: id, user: req.user._id }, // ensure address belongs to current user
-    { fullName, address, city, postalCode, state, country, phoneno, label },
+    { _id: id, user: req.user._id },
+    { $set: updateData },
     { new: true, runValidators: true }
   );
 
@@ -80,53 +89,40 @@ const updateShippingAddress = asyncHandler(async (req, res) => {
   res.json(updatedAddress);
 });
 
-// @desc    Delete a shipping address (only own)
-// @route   DELETE /api/shipping/:id
-// @access  Private
 const deleteShippingAddress = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-
-  const deletedAddress = await ShippingAddress.findOneAndDelete({
-    _id: id,
+  const address = await ShippingAddress.findOne({
+    _id: req.params.id,
     user: req.user._id,
   });
-
-  if (!deletedAddress) {
-    res.status(404);
-    throw new Error("Address not found");
-  }
-
-  // If they deleted the default address, optionally you might want to promote another one to default.
-  // You can add that logic here later if you want.
-
-  res.json({ message: "Address deleted" });
-});
-
-// @desc    Set a default shipping address
-// @route   PATCH /api/shipping/:id/default
-// @access  Private
-const setDefaultShippingAddress = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const userId = req.user._id;
-
-  const address = await ShippingAddress.findOne({ _id: id, user: userId });
 
   if (!address) {
     res.status(404);
     throw new Error("Address not found");
   }
 
-  // Unset any other default addresses of this user
-  await ShippingAddress.updateMany(
-    { user: userId, _id: { $ne: id }, isDefault: true },
-    { $set: { isDefault: false } }
-  );
-
-  // Set this one as default if not already
-  if (!address.isDefault) {
-    address.isDefault = true;
-    await address.save();
+  if (address.isDefault) {
+    res.status(400);
+    throw new Error("Cannot delete default address");
   }
+
+  await address.deleteOne();
+
+  res.json({ message: "Address deleted" });
+});
+
+const setDefaultShippingAddress = asyncHandler(async (req, res) => {
+  const address = await ShippingAddress.findOne({
+    _id: req.params.id,
+    user: req.user._id,
+  });
+
+  if (!address) {
+    res.status(404);
+    throw new Error("Address not found");
+  }
+
+  address.isDefault = true;
+  await address.save(); // schema + index handle the rest
 
   res.json(address);
 });
@@ -138,3 +134,6 @@ export {
   deleteShippingAddress,
   setDefaultShippingAddress,
 };
+
+
+// -------------------- Checked --------------------
