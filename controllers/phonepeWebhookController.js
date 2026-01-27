@@ -71,11 +71,12 @@ const phonepeWebhook = asyncHandler(async (req, res) => {
 
                     case "PRODUCT_PURCHASE":
                         const orderId = merchantOrderId.split("_")[1];
+                        const paymentDetails = payload.paymentDetails[0]
                         const paymentData = {
-                          transaction_id: payload.paymentDetails.transactionId,
-                          state: payload.paymentDetails.state,
-                          payment_method: payload.paymentDetails.paymentMode,
-                          amount_paid: payload.paymentDetails.amount
+                          transaction_id: paymentDetails.transactionId,
+                          state: paymentDetails.state,
+                          payment_method: paymentDetails.paymentMode,
+                          amount_paid: paymentDetails.amount
                         }
                         console.log("Marking order as paid for Order ID:", orderId, paymentData);
                         await markOrderAsPaid(orderId, paymentData);
