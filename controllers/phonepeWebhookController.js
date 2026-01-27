@@ -36,6 +36,7 @@ const phonepeWebhook = asyncHandler(async (req, res) => {
     try {
         // Extract Payload
         const payload = req.body.payload || {};
+        console.log("Webhook payload received:", payload);
         const { merchantOrderId, state } = payload
 
         if (!merchantOrderId || !state) {
@@ -76,6 +77,7 @@ const phonepeWebhook = asyncHandler(async (req, res) => {
                           payment_method: payload.paymentDetails.paymentMode,
                           amount_paid: payload.paymentDetails.amount
                         }
+                        console.log("Marking order as paid for Order ID:", orderId, paymentData);
                         await markOrderAsPaid(orderId, paymentData);
                         break;
             }
