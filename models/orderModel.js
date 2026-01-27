@@ -33,12 +33,15 @@ const orderSchema = mongoose.Schema(
     ],
 
     shippingAddress: {
-      address: { type: String, required: true },
+      fullName: { type: String, required: true },
+      addressLine1: { type: String, required: true },
+      addressLine2: { type: String },
+      landmark: { type: String },
       city: { type: String, required: true },
       postalCode: { type: String, required: true },
       state: { type: String, required: true },
       country: { type: String, required: true },
-      phoneno: { type: String, required: true, match: [/^[6-9][0-9]{9}$/, "Invalid phone number"] },
+      phoneNumber: { type: String, required: true, match: [/^[6-9][0-9]{9}$/, "Invalid phone number"] },
     },
 
     paymentResult: {

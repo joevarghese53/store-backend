@@ -114,8 +114,7 @@ const createOrder = asyncHandler(async (req, res) => {
     };
   });
 
-  const { itemsPrice, taxPrice, shippingPrice, totalPrice } =
-    calcPrices(dbOrderItems);
+  const { itemsPrice, taxPrice, shippingPrice, totalPrice } = calcPrices(dbOrderItems);
 
   const order = new Order({
     orderItems: dbOrderItems,
@@ -413,7 +412,10 @@ const sendOrderConfirmationEmail = async (order, paymentData) => {
             <p><strong>Amount Paid:</strong> ₹${paymentData.amount_paid}</p>
             <p><strong>Payment Method:</strong> ${paymentData.payment_method}</p>
             <p><strong>Delivery Address:</strong><br>
-              ${order.shippingAddress.address},<br>
+              ${order.shippingAddress.fullName},<br>
+              ${order.shippingAddress.addressLine1},<br>
+              ${order.shippingAddress.addressLine2},<br>
+              ${order.shippingAddress.landmark},<br>
               ${order.shippingAddress.city} - ${order.shippingAddress.postalCode}
             </p>
             <hr>
@@ -485,9 +487,11 @@ const sendOrderOutForDeliveryEmail = async (order) => {
             <p><strong>Order ID:</strong> ${order._id}</p>
             <p>Please be available at the delivery address to receive your package.</p>
             <hr>
-            <h4>Delivery Address</h4>
-            <p>
-              ${order.shippingAddress.address}<br>
+            <p><strong>Delivery Address:</strong><br>
+              ${order.shippingAddress.fullName},<br>
+              ${order.shippingAddress.addressLine1},<br>
+              ${order.shippingAddress.addressLine2},<br>
+              ${order.shippingAddress.landmark},<br>
               ${order.shippingAddress.city} - ${order.shippingAddress.postalCode}
             </p>
             <hr>
