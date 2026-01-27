@@ -387,8 +387,8 @@ const sendOrderConfirmationEmail = async (order, paymentData) => {
             <p><strong>Payment Method:</strong> ${paymentData.paymentMode}</p>
             <p><strong>Delivery Address:</strong><br>
               ${order.shippingAddress.addressLine1},<br>
-              ${order.shippingAddress.addressLine2},<br>
-              ${order.shippingAddress.Landmark},<br>
+              ${order.shippingAddress.addressLine2 ? `${order.shippingAddress.addressLine2},<br>` : ""}
+              ${order.shippingAddress.Landmark ? `${order.shippingAddress.Landmark},<br>` : ""}
               ${order.shippingAddress.city} - ${order.shippingAddress.postalCode}, ${order.shippingAddress.state}, ${order.shippingAddress.country}<br>
             </p>
             <hr>
@@ -427,8 +427,8 @@ const sendOrderOutForDeliveryEmail = async (order) => {
             <hr>
             <p><strong>Delivery Address:</strong><br>
               ${order.shippingAddress.addressLine1},<br>
-              ${order.shippingAddress.addressLine2},<br>
-              ${order.shippingAddress.Landmark},<br>
+              ${order.shippingAddress.addressLine2 ? `${order.shippingAddress.addressLine2},<br>` : ""}
+              ${order.shippingAddress.Landmark ? `${order.shippingAddress.Landmark},<br>` : ""}
               ${order.shippingAddress.city} - ${order.shippingAddress.postalCode}, ${order.shippingAddress.state}, ${order.shippingAddress.country}<br>
             </p>
             <hr>
