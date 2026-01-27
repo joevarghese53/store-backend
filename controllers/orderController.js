@@ -5,11 +5,12 @@ import cProduct from "../models/cProductModel.js";
 import { clearCart } from "./cartController.js";
 import asyncHandler from "../middlewares/asyncHandler.js";
 import sendEmail from "../utils/sendEmail.js";
-import axios from "axios";
-import crypto from "crypto";
+import { initiatePhonePePayment } from "../utils/phonpeHelper.js";
+import Transaction from "../models/transactionModel.js";
 
 
 // ---------- Utility: price calculation ----------
+
 function calcPrices(orderItems) {
   let itemsPriceWithTax = 0;
   let taxPrice = 0;
@@ -50,9 +51,6 @@ function calcPrices(orderItems) {
 
 // ---------- Controllers ----------
 
-// @desc    Create a new order
-// @route   POST /api/orders
-// @access  Private
 const createOrder = asyncHandler(async (req, res) => {
   const { orderItems, shippingAddress } = req.body;
 
@@ -81,10 +79,10 @@ const createOrder = asyncHandler(async (req, res) => {
   const customProductDoc = await cProduct.findOne({ userId: req.user._id });
   const customItemsFromDB = customProductDoc
     ? customProductDoc.customProducts.filter((customProd) =>
-        customProductItems.some(
-          (item) => customProd._id.toString() === item._id
-        )
+      customProductItems.some(
+        (item) => customProd._id.toString() === item._id
       )
+    )
     : [];
 
   const dbOrderItems = orderItems.map((itemFromClient) => {
@@ -131,173 +129,46 @@ const createOrder = asyncHandler(async (req, res) => {
   res.status(201).json(createdOrder);
 });
 
-
-// @desc    Initiate PhonePe payment
-// @route   POST /api/payment/initiate-payment
-// @access  Private
 const initiatePayment = asyncHandler(async (req, res) => {
-  const { merchantTransactionId, customerUserId, amount, name } = req.body;
-
-  if (!merchantTransactionId || !customerUserId || !amount || !name) {
+  // Validate request body
+  const { merchantOrderId } = req.body;
+  const userId = req.user._id;
+  if (!merchantOrderId) {
     res.status(400);
-    throw new Error("merchantTransactionId, customerUserId, amount and name are required");
+    throw new Error("Order ID is required");
   }
-
-  const merchantId = process.env.PHONEPE_MERCHANT_ID;
-  const redirectUrl = `${process.env.BACKEND_URL}/api/orders/status?id=${merchantTransactionId}`;
-
-  const data = {
-    merchantId,
-    merchantTransactionId,
-    merchantUserId: customerUserId,
-    amount,                // expect in paise, eg 10000 = ₹100
-    name,
-    redirectUrl,
-    redirectMode: "POST",
-    paymentInstrument: {
-      type: "PAY_PAGE",
-    },
-  };
-
-  const payload = JSON.stringify(data);
-  const payloadMain = Buffer.from(payload).toString("base64");
-  const stringToSign = payloadMain + "/pg/v1/pay" + process.env.PHONEPE_SALT_KEY;
-  const sha256 = crypto.createHash("sha256").update(stringToSign).digest("hex");
-  const checksum = `${sha256}###${process.env.PHONEPE_SALT_INDEX}`;
-
-  const url = `${process.env.PHONEPE_API_BASE_URL}/pg/v1/pay`;
-
-  const options = {
-    method: "POST",
-    url,
-    headers: {
-      accept: "application/json",
-      "Content-Type": "application/json",
-      "X-VERIFY": checksum,
-    },
-    data: {
-      request: payloadMain,
-    },
-  };
-
-  const response = await axios(options);
-
-  // PhonePe errors will be handled by your global errorHandler if axios throws
-  res.status(200).json(response.data);
-});
-
-
-// @desc    PhonePe redirect webhook-style status check
-// @route   GET /api/payment/status?id=merchantTransactionId
-// @access  Public (called by PhonePe / user redirect)
-const checkPaymentStatus = asyncHandler(async (req, res) => {
-  const merchantTransactionId = req.query.id;
-  const retryCount = parseInt(req.query.retry || "0", 10);
-  const merchantId = process.env.PHONEPE_MERCHANT_ID;
-
-  if (!merchantTransactionId) {
+  if (!userId) {
     res.status(400);
-    throw new Error("Missing merchantTransactionId (id query param)");
+    throw new Error("User not authenticated");
   }
-
-  try {
-    const stringToSign =
-      `/pg/v1/status/${merchantId}/${merchantTransactionId}` +
-      process.env.PHONEPE_SALT_KEY;
-
-    const sha256 = crypto.createHash("sha256").update(stringToSign).digest("hex");
-    const checksum = `${sha256}###${process.env.PHONEPE_SALT_INDEX}`;
-
-    const url = `${process.env.PHONEPE_API_BASE_URL}/pg/v1/status/${merchantId}/${merchantTransactionId}`;
-
-    const options = {
-      method: "GET",
-      url,
-      headers: {
-        accept: "application/json",
-        "Content-Type": "application/json",
-        "X-VERIFY": checksum,
-        "X-MERCHANT-ID": merchantId,
-      },
-    };
-
-    const response = await axios.request(options);
-    const code = response.data.code;
-    const orderId = merchantTransactionId;
-
-    switch (code) {
-      case "PAYMENT_SUCCESS": {
-        try {
-          const paymentData = {
-            transaction_id: response.data.data.transactionId,
-            order_id: response.data.data.merchantTransactionId,
-            status: response.data.code,
-            state: response.data.data.state,
-            update_time: new Date().toISOString(),
-            payment_method: response.data.data.paymentInstrument.type,
-            amount_paid: response.data.data.amount / 100,
-          };
-
-          await markOrderAsPaid(orderId, paymentData);
-
-          const successUrl = `${process.env.FRONTEND_URL}/PaymentSuccessPage?id=${orderId}`;
-          return res.redirect(successUrl);
-        } catch (error) {
-          console.error("Error updating payment status:", error.message);
-          const failUrl = `${process.env.FRONTEND_URL}/PaymentFailedPage?id=${orderId}`;
-          return res.redirect(failUrl);
-        }
-      }
-
-      case "PAYMENT_PENDING":
-      case "INTERNAL_SERVER_ERROR": {
-        if (retryCount < 3) {
-          console.log(`${code} - Retrying (${retryCount + 1}/3)...`);
-          const retryUrl = `${req.baseUrl}${req.path}?id=${orderId}&retry=${
-            retryCount + 1
-          }`;
-          return res.redirect(retryUrl);
-        } else {
-          const timeoutUrl = `${process.env.FRONTEND_URL}/PaymentFailedPage?id=${orderId}&message=Retries%20Exceeded`;
-          return res.redirect(timeoutUrl);
-        }
-      }
-
-      case "BAD_REQUEST":
-      case "AUTHORIZATION_FAILED":
-      case "PAYMENT_ERROR":
-      case "TRANSACTION_NOT_FOUND":
-      case "PAYMENT_DECLINED":
-      case "TIMED_OUT": {
-        const errorMessage = encodeURIComponent(`Error: ${code}`);
-        const errorUrl = `${process.env.FRONTEND_URL}/PaymentFailedPage?message=${errorMessage}&id=${orderId}`;
-        return res.redirect(errorUrl);
-      }
-
-      default: {
-        console.warn("Unhandled status code from PhonePe:", code);
-        const unhandledUrl = `${process.env.FRONTEND_URL}/PaymentFailedPage?message=Unhandled%20Response&id=${orderId}`;
-        return res.redirect(unhandledUrl);
-      }
+  const amount = Order.findById(merchantOrderId).then(order => {
+    if (!order) {
+      res.status(404);
+      throw new Error("Order not found");
     }
-  } catch (error) {
-    console.error("Error checking payment status:", error.message);
-    const fallbackUrl = `${process.env.FRONTEND_URL}/PaymentFailedPage?id=${req.query.id}`;
-    return res.redirect(fallbackUrl);
-  }
+    return order.totalPrice * 100; // in paise
+  });
+
+  // Add Txn to DB
+  await Transaction.create({
+    merchantOrderId,
+    userId,
+    service: "PRODUCT_PURCHASE",
+    amount,
+    status: "INITIATED",
+    fulfilled: false,
+  });
+
+  // Initiate Payment
+  const response = await initiatePhonePePayment(merchantOrderId, amount);
+
+  res.json({
+    success: true,
+    redirectUrl: response.redirectUrl,
+    merchantOrderId
+  });
 });
 
-// @desc    Get all orders
-// @route   GET /api/orders
-// @access  Admin
-const getAllOrders = asyncHandler(async (req, res) => {
-  const orders = await Order.find({}).populate("user", "id username email");
-  res.json(orders);
-});
-
-// @desc    Get current user's paid orders
-// @route   GET /api/orders/mine
-// @access  Private
 const getUserOrders = asyncHandler(async (req, res) => {
   const orders = await Order.find({ user: req.user._id, isPaid: true }).sort({
     createdAt: -1,
@@ -305,76 +176,6 @@ const getUserOrders = asyncHandler(async (req, res) => {
   res.json(orders);
 });
 
-// @desc    Count total paid orders grouped by date
-// @route   GET /api/orders/total-orders
-// @access  Admin
-const countTotalOrdersByDate = asyncHandler(async (req, res) => {
-  const ordersByDate = await Order.aggregate([
-    { $match: { isPaid: true } },
-    {
-      $group: {
-        _id: { $dateToString: { format: "%Y-%m-%d", date: "$paidAt" } },
-        totalOrders: { $sum: 1 },
-      },
-    },
-  ]);
-
-  res.json(ordersByDate);
-});
-
-// @desc    Calculate total sales (sum of totalPrice for paid orders)
-// @route   GET /api/orders/total-sales
-// @access  Admin
-const calculateTotalSales = asyncHandler(async (req, res) => {
-  const orders = await Order.find({ isPaid: true });
-
-  const totalSales = orders.reduce(
-    (sum, order) => sum + Number(order.totalPrice || 0),
-    0
-  );
-
-  res.json({ totalSales });
-});
-
-// @desc    Calculate total products sold by date
-// @route   GET /api/orders/total-products-sold
-// @access  Admin
-const calculateTotalProductsSoldByDate = asyncHandler(async (req, res) => {
-  const productsSoldByDate = await Order.aggregate([
-    { $match: { isPaid: true } },
-    { $unwind: "$orderItems" },
-    {
-      $group: {
-        _id: { $dateToString: { format: "%Y-%m-%d", date: "$paidAt" } },
-        totalProductsSold: { $sum: "$orderItems.qty" },
-      },
-    },
-  ]);
-
-  res.json(productsSoldByDate);
-});
-
-// @desc    Calculate total sales grouped by date
-// @route   GET /api/orders/total-sales-by-date
-// @access  Admin
-const calculateTotalSalesByDate = asyncHandler(async (req, res) => {
-  const salesByDate = await Order.aggregate([
-    { $match: { isPaid: true } },
-    {
-      $group: {
-        _id: { $dateToString: { format: "%Y-%m-%d", date: "$paidAt" } },
-        totalSales: { $sum: "$totalPrice" },
-      },
-    },
-    { $sort: { _id: 1 } },
-  ]);
-
-  res.json(salesByDate);
-});
-
-// @desc    Get order by ID (user can see own, admin can see all)
-// @route   GET /api/orders/:id
-// @access  Private
 const findOrderById = asyncHandler(async (req, res) => {
   const order = await Order.findById(req.params.id).populate(
     "user",
@@ -395,7 +196,172 @@ const findOrderById = asyncHandler(async (req, res) => {
   res.json(order);
 });
 
-// ---------- Payment + Emails ----------
+//----------- Admin Routes -----------
+
+const getAllOrders = asyncHandler(async (req, res) => {
+  const orders = await Order.find({}).populate("user", "id username email");
+  res.json(orders);
+});
+
+const countTotalOrdersByDate = asyncHandler(async (req, res) => {
+  const ordersByDate = await Order.aggregate([
+    { $match: { isPaid: true } },
+    {
+      $group: {
+        _id: { $dateToString: { format: "%Y-%m-%d", date: "$paidAt" } },
+        totalOrders: { $sum: 1 },
+      },
+    },
+  ]);
+
+  res.json(ordersByDate);
+});
+
+const calculateTotalSales = asyncHandler(async (req, res) => {
+  const orders = await Order.find({ isPaid: true });
+
+  const totalSales = orders.reduce(
+    (sum, order) => sum + Number(order.totalPrice || 0),
+    0
+  );
+
+  res.json({ totalSales });
+});
+
+const calculateTotalProductsSoldByDate = asyncHandler(async (req, res) => {
+  const productsSoldByDate = await Order.aggregate([
+    { $match: { isPaid: true } },
+    { $unwind: "$orderItems" },
+    {
+      $group: {
+        _id: { $dateToString: { format: "%Y-%m-%d", date: "$paidAt" } },
+        totalProductsSold: { $sum: "$orderItems.qty" },
+      },
+    },
+  ]);
+
+  res.json(productsSoldByDate);
+});
+
+const calculateTotalSalesByDate = asyncHandler(async (req, res) => {
+  const salesByDate = await Order.aggregate([
+    { $match: { isPaid: true } },
+    {
+      $group: {
+        _id: { $dateToString: { format: "%Y-%m-%d", date: "$paidAt" } },
+        totalSales: { $sum: "$totalPrice" },
+      },
+    },
+    { $sort: { _id: 1 } },
+  ]);
+
+  res.json(salesByDate);
+});
+
+// ---------- Status Update Routes (Express handlers) ----------
+
+const markOrderAsPaid = async (orderId, paymentData) => {
+  try {
+    const order = await Order.findById(orderId).populate(
+      "user",
+      "username email"
+    );
+
+    if (!order) {
+      throw new Error("Order not found");
+    }
+
+    order.status = "paid";
+    order.isPaid = true;
+    order.paidAt = Date.now();
+    order.paymentResult = {
+      transactionId: paymentData.transactionId,
+      state: paymentData.state,
+      paymentMode: paymentData.paymentMode,
+      amount: paymentData.amount,
+    };
+
+    await order.save();
+    await sendOrderConfirmationEmail(order, paymentData);
+    await clearCart(order.user._id);
+
+    return order;
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+const markOrderAsConfirmed = asyncHandler(async (req, res) => {
+  const order = await Order.findById(req.params.id);
+
+  if (!order) {
+    res.status(404);
+    throw new Error("Order not found");
+  }
+
+  order.status = "confirmed"
+  order.isConfirmed = true;
+  order.confirmedAt = Date.now();
+
+  const updatedOrder = await order.save();
+  res.json(updatedOrder);
+});
+
+const markOrderAsShipped = asyncHandler(async (req, res) => {
+  const order = await Order.findById(req.params.id);
+
+  if (!order) {
+    res.status(404);
+    throw new Error("Order not found");
+  }
+
+  order.status = "shipped"
+  order.isShipped = true;
+  order.shippedAt = Date.now();
+
+  const updatedOrder = await order.save();
+  res.json(updatedOrder);
+});
+
+const markOrderAsOutForDelivery = asyncHandler(async (req, res) => {
+  const order = await Order.findById(req.params.id).populate(
+    "user",
+    "username email"
+  );
+
+  if (!order) {
+    res.status(404);
+    throw new Error("Order not found");
+  }
+
+  order.status = "outForDelivery"
+  order.isOutForDelivery = true;
+  order.outForDeliveryAt = Date.now();
+
+  const updatedOrder = await order.save();
+
+  await sendOrderOutForDeliveryEmail(updatedOrder);
+
+  res.json(updatedOrder);
+});
+
+const markOrderAsDelivered = asyncHandler(async (req, res) => {
+  const order = await Order.findById(req.params.id);
+
+  if (!order) {
+    res.status(404);
+    throw new Error("Order not found");
+  }
+
+  order.status = "delivered"
+  order.isDelivered = true;
+  order.deliveredAt = Date.now();
+
+  const updatedOrder = await order.save();
+  res.json(updatedOrder);
+});
+
+// ---------- Emails ----------
 
 const sendOrderConfirmationEmail = async (order, paymentData) => {
   const emailSent = await sendEmail({
@@ -410,11 +376,13 @@ const sendOrderConfirmationEmail = async (order, paymentData) => {
             <p>Delivery is handled by a third-party service and delivery time may vary.</p>
             <hr>
             <h4>Order Summary</h4>
-            <p><strong>Amount Paid:</strong> ₹${paymentData.amount_paid}</p>
-            <p><strong>Payment Method:</strong> ${paymentData.payment_method}</p>
+            <p><strong>Amount Paid:</strong> ₹${paymentData.amount}</p>
+            <p><strong>Payment Method:</strong> ${paymentData.paymentMode}</p>
             <p><strong>Delivery Address:</strong><br>
-              ${order.shippingAddress.address},<br>
-              ${order.shippingAddress.city} - ${order.shippingAddress.postalCode}
+              ${order.shippingAddress.addressLine1},<br>
+              ${order.shippingAddress.addressLine2},<br>
+              ${order.shippingAddress.Landmark},<br>
+              ${order.shippingAddress.city} - ${order.shippingAddress.postalCode}, ${order.shippingAddress.state}, ${order.shippingAddress.country}<br>
             </p>
             <hr>
             <h4>Thank you for shopping with us!</h4>
@@ -437,47 +405,12 @@ const sendOrderConfirmationEmail = async (order, paymentData) => {
   }
 };
 
-
-// This is NOT an Express handler, it's a service called from proxyController
-const markOrderAsPaid = async (orderId, paymentData) => {
-  try {
-    const order = await Order.findById(orderId).populate(
-      "user",
-      "username email"
-    );
-
-    if (!order) {
-      throw new Error("Order not found");
-    }
-
-    order.isPaid = true;
-    order.paidAt = Date.now();
-    order.paymentResult = {
-      transaction_id: paymentData.transaction_id,
-      order_id: paymentData.order_id,
-      status: paymentData.status,
-      state: paymentData.state,
-      update_time: paymentData.update_time,
-      payment_method: paymentData.payment_method,
-      amount_paid: paymentData.amount_paid,
-    };
-
-    await order.save();
-    await sendOrderConfirmationEmail(order, paymentData);
-    await clearCart(order.user._id);
-
-    return order;
-  } catch (error) {
-    throw new Error(error.message);
-  }
-};
-
 const sendOrderOutForDeliveryEmail = async (order) => {
   const emailSent = await sendEmail({
     to: order.user.email,
     name: order.user.username || "User",
     subject: "Order Out for Delivery",
-    html:  `
+    html: `
           <div style="font-family: Arial, sans-serif; border: 1px solid #ddd; padding: 20px; max-width: 600px; margin: auto;">
             <h2 style="background-color: #2874F0; color: white; padding: 10px; text-align: center;">Flow State</h2>
             <h3>Hi ${order.user.username || "User"},</h3>
@@ -485,10 +418,11 @@ const sendOrderOutForDeliveryEmail = async (order) => {
             <p><strong>Order ID:</strong> ${order._id}</p>
             <p>Please be available at the delivery address to receive your package.</p>
             <hr>
-            <h4>Delivery Address</h4>
-            <p>
-              ${order.shippingAddress.address}<br>
-              ${order.shippingAddress.city} - ${order.shippingAddress.postalCode}
+            <p><strong>Delivery Address:</strong><br>
+              ${order.shippingAddress.addressLine1},<br>
+              ${order.shippingAddress.addressLine2},<br>
+              ${order.shippingAddress.Landmark},<br>
+              ${order.shippingAddress.city} - ${order.shippingAddress.postalCode}, ${order.shippingAddress.state}, ${order.shippingAddress.country}<br>
             </p>
             <hr>
             <h4>Thank you for shopping with us!</h4>
@@ -510,86 +444,6 @@ const sendOrderOutForDeliveryEmail = async (order) => {
   }
 };
 
-// ---------- Status Update Routes (Express handlers) ----------
-
-// @desc    Mark order as confirmed
-// @route   PUT /api/orders/:id/confirm
-// @access  Admin
-const markOrderAsConfirmed = asyncHandler(async (req, res) => {
-  const order = await Order.findById(req.params.id);
-
-  if (!order) {
-    res.status(404);
-    throw new Error("Order not found");
-  }
-
-  order.isConfirmed = true;
-  order.confirmedAt = Date.now();
-
-  const updatedOrder = await order.save();
-  res.json(updatedOrder);
-});
-
-// @desc    Mark order as shipped
-// @route   PUT /api/orders/:id/shipped
-// @access  Admin
-const markOrderAsShipped = asyncHandler(async (req, res) => {
-  const order = await Order.findById(req.params.id);
-
-  if (!order) {
-    res.status(404);
-    throw new Error("Order not found");
-  }
-
-  order.isShipped = true;
-  order.shippedAt = Date.now();
-
-  const updatedOrder = await order.save();
-  res.json(updatedOrder);
-});
-
-// @desc    Mark order as out for delivery
-// @route   PUT /api/orders/:id/out-for-delivery
-// @access  Admin
-const markOrderAsOutForDelivery = asyncHandler(async (req, res) => {
-  const order = await Order.findById(req.params.id).populate(
-    "user",
-    "username email"
-  );
-
-  if (!order) {
-    res.status(404);
-    throw new Error("Order not found");
-  }
-
-  order.isOutForDelivery = true;
-  order.outForDeliveryAt = Date.now();
-
-  const updatedOrder = await order.save();
-
-  await sendOrderOutForDeliveryEmail(updatedOrder);
-
-  res.json(updatedOrder);
-});
-
-// @desc    Mark order as delivered
-// @route   PUT /api/orders/:id/delivered
-// @access  Admin
-const markOrderAsDelivered = asyncHandler(async (req, res) => {
-  const order = await Order.findById(req.params.id);
-
-  if (!order) {
-    res.status(404);
-    throw new Error("Order not found");
-  }
-
-  order.isDelivered = true;
-  order.deliveredAt = Date.now();
-
-  const updatedOrder = await order.save();
-  res.json(updatedOrder);
-});
-
 export {
   createOrder,
   getAllOrders,
@@ -605,5 +459,4 @@ export {
   markOrderAsOutForDelivery,
   markOrderAsDelivered,
   initiatePayment,
-  checkPaymentStatus,
 };

@@ -34,7 +34,9 @@ const phonepeWebhook = asyncHandler(async (req, res) => {
 
     try {
         // Extract Payload
-        const { merchantOrderId, state } = req.body.payload || {};
+        const payload = req.body.payload || {};
+        const { merchantOrderId, state } = payload
+
         if (!merchantOrderId || !state) {
             return;
         }
@@ -64,6 +66,16 @@ const phonepeWebhook = asyncHandler(async (req, res) => {
                 case "TRIES_PURCHASE":
                     await applyPurchasedTries(txn.userId, txn.triesToPurchase);
                     break;
+
+                    case "PRODUCT_PURCHASE":
+                        const paymentData = {
+                          transaction_id: payload.paymentDetails.transactionId,
+                          state: payload.paymentDetails.state,
+                          payment_method: payload.paymentDetails.paymentMode,
+                          amount_paid: payload.paymentDetails.amount
+                        }
+                        await markOrderAsPaid(merchantOrderId, paymentData);
+                        break;
             }
         }
 

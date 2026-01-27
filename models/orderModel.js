@@ -11,14 +11,12 @@ const orderSchema = mongoose.Schema(
         qty: { type: Number, required: true },
         size: { type: String, required: true },
         price: { type: Number, required: true },
-
         frontImage: { type: String },
         backImage: { type: String },
         frontDesign: { type: String },
         backDesign: { type: String },
         frontUpload: { type: String },
         backUpload: { type: String },
-
         product: {
           type: mongoose.Schema.Types.ObjectId,
           refPath: 'orderItems.productType', // Dynamic reference based on productType
@@ -33,22 +31,21 @@ const orderSchema = mongoose.Schema(
     ],
 
     shippingAddress: {
-      address: { type: String, required: true },
+      addressLine1: { type: String, required: true },
+      addressLine2: { type: String},
+      Landmark: { type: String },
       city: { type: String, required: true },
       postalCode: { type: String, required: true },
       state: { type: String, required: true },
       country: { type: String, required: true },
-      phoneno: { type: String, required: true, match: [/^[6-9][0-9]{9}$/, "Invalid phone number"] },
+      phoneNumber: { type: String, required: true, match: [/^[6-9][0-9]{9}$/, "Invalid phone number"] },
     },
 
     paymentResult: {
-      transaction_id: { type: String },
-      order_id: { type: String },
-      status: { type: String },
+      transactionId: { type: String },
       state: { type: String },
-      update_time: { type: String },
-      payment_method: { type: String },
-      amount_paid: { type: Number },
+      paymentMode: { type: String },
+      amount: { type: Number },
     },
 
     itemsPrice: {
@@ -84,10 +81,38 @@ const orderSchema = mongoose.Schema(
         "shipped",
         "outForDelivery",
         "delivered",
-        "cancelled",
-        "refunded",
       ],
       default: "pending",
+    },
+
+    isPaid: {
+      type: Boolean,
+      required: true,
+      default: false,
+    },
+
+    isConfirmed: {
+      type: Boolean,
+      required: true,
+      default: false,
+    },
+
+    isShipped: {
+      type: Boolean,
+      required: true,
+      default: false,
+    },
+
+    isOutForDelivery: {
+      type: Boolean,
+      required: true,
+      default: false,
+    },
+
+    isDelivered: {
+      type: Boolean,
+      required: true,
+      default: false,
     },
 
     paidAt: {

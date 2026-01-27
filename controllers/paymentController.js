@@ -2,6 +2,7 @@ import asyncHandler from "../middlewares/asyncHandler.js";
 import Transaction from "../models/transactionModel.js";
 import { getPhonePePaymentStatus } from "../utils/phonpeHelper.js";
 import { applyPurchasedTries } from "./triesController.js";
+import { markOrderAsPaid } from "./orderController.js";
 
 const checkPaymentStatus = asyncHandler(async (req, res) => {
 
@@ -45,6 +46,16 @@ const checkPaymentStatus = asyncHandler(async (req, res) => {
       switch (updated.service) {
         case "TRIES_PURCHASE":
           await applyPurchasedTries(updated.userId, updated.triesToPurchase);
+          break;
+
+        case "PRODUCT_PURCHASE":
+          const paymentData = {
+            transaction_id: statusRes.paymentDetails.transactionId,
+            state: statusRes.paymentDetails.state,
+            payment_method: statusRes.paymentDetails.paymentMode,
+            amount_paid: statusRes.paymentDetails.amount
+          }
+          await markOrderAsPaid(merchantOrderId, paymentData);
           break;
       }
     }
