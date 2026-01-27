@@ -287,6 +287,7 @@ const markOrderAsPaid = async (orderId, paymentData) => {
 
     await order.save();
     await sendOrderConfirmationEmail(order, paymentData);
+    console.log("Clearing cart for user:", order.user._id);
     await clearCart(order.user._id);
 
     return order;
