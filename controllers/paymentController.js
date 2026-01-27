@@ -53,10 +53,10 @@ const checkPaymentStatus = asyncHandler(async (req, res) => {
         case "PRODUCT_PURCHASE":
           const orderId = merchantOrderId.split("_")[1];
           const paymentData = {
-            transaction_id: statusRes.paymentDetails.transactionId,
+            transactionId: statusRes.paymentDetails.transactionId,
             state: statusRes.paymentDetails.state,
-            payment_method: statusRes.paymentDetails.paymentMode,
-            amount_paid: statusRes.paymentDetails.amount
+            paymentMode: statusRes.paymentDetails.paymentMode,
+            amount: statusRes.paymentDetails.amount
           }
           console.log("Marking order as paid for Order ID:", orderId, paymentData);
           await markOrderAsPaid(orderId, paymentData);
