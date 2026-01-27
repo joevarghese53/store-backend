@@ -370,6 +370,7 @@ const markOrderAsDelivered = asyncHandler(async (req, res) => {
 // ---------- Emails ----------
 
 const sendOrderConfirmationEmail = async (order, paymentData) => {
+  console.log("Sending order confirmation email", paymentData);
   const emailSent = await sendEmail({
     to: order.user.email,
     name: order.user.username || "User",
