@@ -33,7 +33,7 @@ const parseImagesField = (images) => {
 // @route   POST /api/products
 // @access  Admin
 const addProduct = asyncHandler(async (req, res) => {
-  const { name, description, price, category, gender, offers, returnpolicy } =
+  const { name, description, price, category, offers, returnpolicy } =
     req.fields;
 
   const imagesArray = parseImagesField(req.fields.images);
@@ -42,9 +42,6 @@ const addProduct = asyncHandler(async (req, res) => {
     case !name:
       res.status(400);
       throw new Error("Name is required");
-    case !gender:
-      res.status(400);
-      throw new Error("Gender is required");
     case !description:
       res.status(400);
       throw new Error("Description is required");
@@ -67,7 +64,6 @@ const addProduct = asyncHandler(async (req, res) => {
     description,
     price,
     category,
-    gender,
     offers,
     returnpolicy,
     frontImage: req.fields.frontImage,
@@ -87,7 +83,7 @@ const addProduct = asyncHandler(async (req, res) => {
 // @route   PUT /api/products/:id
 // @access  Admin
 const updateProductDetails = asyncHandler(async (req, res) => {
-  const { name, description, price, category, gender, offers, returnpolicy } =
+  const { name, description, price, category, offers, returnpolicy } =
     req.fields;
 
   const imagesArray = parseImagesField(req.fields.images);
@@ -96,9 +92,6 @@ const updateProductDetails = asyncHandler(async (req, res) => {
     case !name:
       res.status(400);
       throw new Error("Name is required");
-    case !gender:
-      res.status(400);
-      throw new Error("Gender is required");
     case !description:
       res.status(400);
       throw new Error("Description is required");
@@ -127,7 +120,6 @@ const updateProductDetails = asyncHandler(async (req, res) => {
   product.description = description;
   product.price = price;
   product.category = category;
-  product.gender = gender;
   product.offers = offers;
   product.returnpolicy = returnpolicy;
   product.frontImage = req.fields.frontImage ?? product.frontImage;
@@ -245,11 +237,11 @@ const fetchProducts = asyncHandler(async (req, res) => {
 
   const keyword = req.query.keyword
     ? {
-        name: {
-          $regex: req.query.keyword,
-          $options: "i",
-        },
-      }
+      name: {
+        $regex: req.query.keyword,
+        $options: "i",
+      },
+    }
     : {};
 
   const count = await Product.countDocuments({ ...keyword });
@@ -327,16 +319,11 @@ const addProductReview = asyncHandler(async (req, res) => {
   res.status(201).json({ message: "Review added" });
 });
 
-// @desc    Get top rated products, optional gender filter
+// @desc    Get top rated products, optional filter
 // @route   GET /api/products/top
 // @access  Public
 const fetchTopProducts = asyncHandler(async (req, res) => {
-  const { gender } = req.query;
-  const query = {};
-
-  if (gender) query.gender = gender;
-
-  const products = await Product.find(query)
+  const products = await Product.find()
     .sort({ rating: -1 })
     .populate("category")
     .limit(4);
@@ -352,16 +339,12 @@ const fetchNewProducts = asyncHandler(async (req, res) => {
   res.json(products);
 });
 
-// @desc    Filter products by category, price range, gender
+// @desc    Filter products by category, price range
 // @route   POST /api/products/filtered-products
 // @access  Public
 const filterProducts = asyncHandler(async (req, res) => {
-  const { checked = [], radio, gender } = req.body;
+  const { checked = [], radio } = req.body;
   const args = {};
-
-  if (gender) {
-    args.gender = gender;
-  }
 
   if (Array.isArray(checked) && checked.length > 0) {
     args.category = { $in: checked };

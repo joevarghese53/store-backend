@@ -25,15 +25,10 @@ const productSchema = mongoose.Schema(
     frontDesign: { type: String },
     backDesign: { type: String },
     images: [{ type: String }],
-    gender: {
-      type: String,
-      required: true,
-      enum: ['male', 'female'], // Restrict values to 'male' or 'female'
-    },
     category: { type: ObjectId, ref: "Category", required: true },
     description: { type: String, required: true },
     reviews: [reviewSchema],
-    rating: { type: Number, required: true, default: 0},
+    rating: { type: Number, required: true, default: 0 },
     numReviews: { type: Number, required: true, default: 0 },
     price: { type: Number, required: true, default: 0 },
     countInStock: { type: Number, required: true, default: 0 },
@@ -43,7 +38,7 @@ const productSchema = mongoose.Schema(
   { timestamps: true }
 );
 
-productSchema.index({ category: 1, gender: 1 });
+productSchema.index({ category: 1 });
 productSchema.index({ rating: -1 });
 
 const Product = mongoose.model("Product", productSchema);

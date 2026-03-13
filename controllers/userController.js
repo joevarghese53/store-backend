@@ -149,7 +149,7 @@ const createUser = asyncHandler(async (req, res) => {
   await redisClient.del(verifiedKey);
 
   // 6) Set refresh cookie + return access token
-  const accessToken = await generateTokens(req, res, newUser._id);
+  const accessToken = await generateTokens(req, res, newUser);
 
   // 7) Initialize free tries
   await new Tries({
@@ -193,7 +193,7 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new Error("Invalid email or password.");
   }
 
-  const accessToken = await generateTokens(req, res, existingUser._id);
+  const accessToken = await generateTokens(req, res, existingUser);
 
   res.status(200).json({
     _id: existingUser._id,
