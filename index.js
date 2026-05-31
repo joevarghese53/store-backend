@@ -6,7 +6,7 @@ import cors from "cors";
 import { initRateLimiters } from "./utils/rateLimiters.js";
 
 import connectDB from "./config/db.js";
-import {connectRedis, redisClient} from "./config/redisClient.js"
+import { connectRedis, redisClient } from "./config/redisClient.js"
 import mongoose from "mongoose";
 import userRoutes from "./routes/userRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
@@ -23,15 +23,18 @@ import emailOtpRoutes from "./routes/emailOtpRoutes.js";
 import phonepeWebhookRoutes from "./routes/phonepeWebhookRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 
-import {errorHandler, notFound } from './middlewares/errorHandler.js';
+import { errorHandler, notFound } from './middlewares/errorHandler.js';
 import corsOptions from "./config/corsOptions.js";
 import helmet from "helmet";
+import dns from "node:dns/promises";
+
 
 dotenv.config();
 const port = process.env.PORT || 5000;
 
 const app = express();
 
+dns.setServers(["1.1.1.1"])
 app.set("trust proxy", 1); // for express rate limit trusting proxy headers (Render and vercel)
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 app.use(cors(corsOptions));

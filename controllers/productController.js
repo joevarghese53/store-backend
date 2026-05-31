@@ -259,7 +259,7 @@ const fetchProducts = asyncHandler(async (req, res) => {
 // @route   GET /api/products/:id
 // @access  Public
 const fetchProductById = asyncHandler(async (req, res) => {
-  const product = await Product.findById(req.params.id);
+  const product = await Product.findById(req.params.id).populate("category");
 
   if (!product) {
     res.status(404);
