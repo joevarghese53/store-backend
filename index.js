@@ -1,4 +1,6 @@
 // index.js
+import dns from "node:dns";
+dns.setServers(["1.1.1.1"])
 import express from "express";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
@@ -26,7 +28,6 @@ import paymentRoutes from "./routes/paymentRoutes.js";
 import { errorHandler, notFound } from './middlewares/errorHandler.js';
 import corsOptions from "./config/corsOptions.js";
 import helmet from "helmet";
-import dns from "node:dns/promises";
 
 
 dotenv.config();
@@ -34,7 +35,7 @@ const port = process.env.PORT || 5000;
 
 const app = express();
 
-dns.setServers(["1.1.1.1"])
+
 app.set("trust proxy", 1); // for express rate limit trusting proxy headers (Render and vercel)
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 app.use(cors(corsOptions));
