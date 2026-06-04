@@ -17,7 +17,7 @@ const customProductSchema = mongoose.Schema(
         price: { type: Number, required: true, min: 0 },
         countInStock: { type: Number, required: true, min: 0, default: 0 },
         offers: { type: String, default: "" },
-        returnpolicy: { type: String, default: "" },
+        returnPolicy: { type: String, default: "" },
     },
     { timestamps: true }
 );

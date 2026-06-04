@@ -20,7 +20,7 @@ const BUCKET_NAME = process.env.CLOUDFLARE_BUCKET_NAME;
 
 // @desc Add a new custom product for the current user
 const addToCProducts = asyncHandler(async (req, res) => {
-  const { name, description, price, category, offers, returnpolicy } = req.fields;
+  const { name, description, price, category, offers, returnPolicy } = req.fields;
 
   switch (true) {
     case !name:
@@ -35,7 +35,7 @@ const addToCProducts = asyncHandler(async (req, res) => {
       return res.status(400).json({ error: "Category is required" });
     case !offers:
       return res.status(400).json({ error: "Offers are required" });
-    case !returnpolicy:
+    case !returnPolicy:
       return res.status(400).json({ error: "Return Policy is required" });
   }
 
@@ -45,7 +45,7 @@ const addToCProducts = asyncHandler(async (req, res) => {
     price: Number(price),
     category,
     offers,
-    returnpolicy,
+    returnPolicy,
     frontImage: req.fields.frontImage,
     backImage: req.fields.backImage,
     frontDesign: req.fields.frontDesign,

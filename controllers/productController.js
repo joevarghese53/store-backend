@@ -33,7 +33,7 @@ const parseImagesField = (images) => {
 // @route   POST /api/products
 // @access  Admin
 const addProduct = asyncHandler(async (req, res) => {
-  const { name, description, price, category, offers, returnpolicy } =
+  const { name, description, price, category, countInStock, offers, returnPolicy } =
     req.fields;
 
   const imagesArray = parseImagesField(req.fields.images);
@@ -51,10 +51,13 @@ const addProduct = asyncHandler(async (req, res) => {
     case !category:
       res.status(400);
       throw new Error("Category is required");
+    case !countInStock:
+      res.status(400);
+      throw new Error("Count in stock is required");
     case !offers:
       res.status(400);
       throw new Error("Offers is required");
-    case !returnpolicy:
+    case !returnPolicy:
       res.status(400);
       throw new Error("Return policy is required");
   }
@@ -64,8 +67,9 @@ const addProduct = asyncHandler(async (req, res) => {
     description,
     price,
     category,
+    countInStock,
     offers,
-    returnpolicy,
+    returnPolicy,
     frontImage: req.fields.frontImage,
     backImage: req.fields.backImage,
     frontDesign: req.fields.frontDesign,
@@ -83,7 +87,7 @@ const addProduct = asyncHandler(async (req, res) => {
 // @route   PUT /api/products/:id
 // @access  Admin
 const updateProductDetails = asyncHandler(async (req, res) => {
-  const { name, description, price, category, offers, returnpolicy } =
+  const { name, description, price, category, offers, returnPolicy } =
     req.fields;
 
   const imagesArray = parseImagesField(req.fields.images);
@@ -104,7 +108,7 @@ const updateProductDetails = asyncHandler(async (req, res) => {
     case !offers:
       res.status(400);
       throw new Error("Offers is required");
-    case !returnpolicy:
+    case !returnPolicy:
       res.status(400);
       throw new Error("Return policy is required");
   }
@@ -121,7 +125,7 @@ const updateProductDetails = asyncHandler(async (req, res) => {
   product.price = price;
   product.category = category;
   product.offers = offers;
-  product.returnpolicy = returnpolicy;
+  product.returnPolicy = returnPolicy;
   product.frontImage = req.fields.frontImage ?? product.frontImage;
   product.backImage = req.fields.backImage ?? product.backImage;
   product.frontDesign = req.fields.frontDesign ?? product.frontDesign;
@@ -358,6 +362,52 @@ const filterProducts = asyncHandler(async (req, res) => {
   res.json(products);
 });
 
+const uploadImages = async (req, res) => {
+  if (!req.files || Object.keys(req.files).length === 0) {
+    return res.status(400).json({ message: "No image files provided" });
+  }
+
+  const allowedFields = [
+    "frontImage",
+    "backImage",
+    "frontDesign",
+    "backDesign",
+    "frontUpload",
+    "backUpload",
+    "images",
+  ];
+
+  try {
+    const uploadedImages = {};
+
+    for (const [field, files] of Object.entries(req.files)) {
+      if (!allowedFields.includes(field)) {
+        return res.status(400).json({ message: `Invalid field: ${field}` });
+      }
+
+      uploadedImages[field] = [];
+
+      for (const file of files) {
+        const { uploadToR2 } = await import("../services/r2Service.js");
+        const url = await uploadToR2(file);
+        uploadedImages[field].push(url);
+      }
+    }
+
+    return res.status(200).json({
+      message: "Images uploaded successfully",
+      imageUrls: uploadedImages,
+    });
+  } catch (error) {
+    console.error("Upload error:", error);
+    return res.status(500).json({
+      message: "Image upload failed",
+      error: error.message,
+    });
+  }
+};
+
+
 export {
   addProduct,
   updateProductDetails,
@@ -370,4 +420,5 @@ export {
   fetchTopProducts,
   fetchNewProducts,
   filterProducts,
+  uploadImages
 };
