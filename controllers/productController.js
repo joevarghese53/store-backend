@@ -346,7 +346,7 @@ const fetchTopProducts = asyncHandler(async (req, res) => {
 // @desc    Get latest products
 // @route   GET /api/products/new
 // @access  Public
-const fetchNewProducts = asyncHandler(async (req, res) => {
+const fetchLatestProducts = asyncHandler(async (req, res) => {
   const products = await Product.find().sort({ createdAt: -1 }).limit(5);
   res.json(products);
 });
@@ -426,7 +426,7 @@ export {
   fetchAllProducts,
   addProductReview,
   fetchTopProducts,
-  fetchNewProducts,
+  fetchLatestProducts,
   filterProducts,
   uploadImages
 };

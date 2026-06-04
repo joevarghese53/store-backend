@@ -14,7 +14,7 @@ import {
   fetchAllProducts,
   addProductReview,
   fetchTopProducts,
-  fetchNewProducts,
+  fetchLatestProducts,
   filterProducts,
   uploadImages
 } from "../controllers/productController.js";
@@ -26,7 +26,7 @@ router.route("/").get(fetchProducts);
 router.route("/allproducts").get(fetchAllProducts);
 router.route("/filtered-products").post(filterProducts);
 router.get("/top", fetchTopProducts);
-router.get("/new", fetchNewProducts);
+router.get("/latest", fetchLatestProducts);
 router.route("/reviews/add-review/:id").post(authenticate, checkId, addProductReview);
 router.route("/:id").get(checkId, fetchProductById);
 
