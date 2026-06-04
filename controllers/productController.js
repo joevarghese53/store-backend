@@ -87,31 +87,10 @@ const addProduct = asyncHandler(async (req, res) => {
 // @route   PUT /api/products/:id
 // @access  Admin
 const updateProductDetails = asyncHandler(async (req, res) => {
-  const { name, description, price, category, offers, returnPolicy } =
+  const { name, description, price, category, countInStock, offers, returnPolicy, frontImage, backImage, frontDesign, backDesign, frontUpload, backUpload } =
     req.fields;
 
   const imagesArray = parseImagesField(req.fields.images);
-
-  switch (true) {
-    case !name:
-      res.status(400);
-      throw new Error("Name is required");
-    case !description:
-      res.status(400);
-      throw new Error("Description is required");
-    case !price:
-      res.status(400);
-      throw new Error("Price is required");
-    case !category:
-      res.status(400);
-      throw new Error("Category is required");
-    case !offers:
-      res.status(400);
-      throw new Error("Offers is required");
-    case !returnPolicy:
-      res.status(400);
-      throw new Error("Return policy is required");
-  }
 
   const product = await Product.findById(req.params.id);
 
@@ -120,19 +99,48 @@ const updateProductDetails = asyncHandler(async (req, res) => {
     throw new Error("Product not found");
   }
 
-  product.name = name;
-  product.description = description;
-  product.price = price;
-  product.category = category;
-  product.offers = offers;
-  product.returnPolicy = returnPolicy;
-  product.frontImage = req.fields.frontImage ?? product.frontImage;
-  product.backImage = req.fields.backImage ?? product.backImage;
-  product.frontDesign = req.fields.frontDesign ?? product.frontDesign;
-  product.backDesign = req.fields.backDesign ?? product.backDesign;
-  product.frontUpload = req.fields.frontUpload ?? product.frontUpload;
-  product.backUpload = req.fields.backUpload ?? product.backUpload;
-  product.images = imagesArray;
+  if(name){
+    product.name = name
+  }
+  if(description){
+    product.description = description
+  }
+  if(price){
+    product.price = price
+  }
+  if(category){
+    product.category = category
+  }
+  if(countInStock){
+    product.countInStock = countInStock
+  }
+  if(offers){
+    product.offers = offers
+  }
+  if(returnPolicy){
+    product.returnPolicy = returnPolicy
+  }
+  if(frontImage){
+    product.frontImage = frontImage
+  }
+  if(backImage){
+    product.backImage = backImage
+  }
+  if(frontDesign){
+    product.frontDesign = frontDesign
+  }
+  if(backDesign){
+    product.backDesign = backDesign
+  }
+  if(frontUpload){
+    product.frontUpload = frontUpload
+  }
+  if(backUpload){
+    product.backUpload = backUpload
+  }
+  if(imagesArray.length > 0){
+    product.images = imagesArray
+  }
 
   const updatedProduct = await product.save();
   res.json(updatedProduct);
