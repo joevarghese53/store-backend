@@ -93,7 +93,7 @@ const initiateRegistration = asyncHandler(async (req, res) => {
 // @desc    Register new user
 // @route   POST /api/users/register
 // @access  Public
-const createUser = asyncHandler(async (req, res) => {
+const register = asyncHandler(async (req, res) => {
 
   //Data Validation
   const { email } = req.body;
@@ -529,9 +529,80 @@ const deleteUserById = asyncHandler(async (req, res) => {
 
 });
 
+const createTestUsers = asyncHandler(async (req, res) => {
+  const { users } = req.body;
+
+  if (!Array.isArray(users) || users.length === 0) {
+    res.status(400);
+    throw new Error("Users array is required.");
+  }
+
+  const createdUsers = [];
+  const failedUsers = [];
+
+  for (const userData of users) {
+    try {
+      const { username, email, password } = userData;
+
+      if (!username || !email || !password) {
+        failedUsers.push({
+          email,
+          reason: "username, email and password are required",
+        });
+        continue;
+      }
+
+      const normalizedEmail = email.toLowerCase();
+
+      const existingUser = await User.findOne({
+        email: normalizedEmail,
+      });
+
+      if (existingUser) {
+        failedUsers.push({
+          email: normalizedEmail,
+          reason: "User already exists",
+        });
+        continue;
+      }
+
+      const newUser = await User.create({
+        username,
+        email: normalizedEmail,
+        password,
+      });
+
+      await Tries.create({
+        user: newUser._id,
+        freeTriesRemaining: 5,
+        purchasedTriesRemaining: 0,
+      });
+
+      createdUsers.push({
+        _id: newUser._id,
+        username: newUser.username,
+        email: newUser.email,
+      });
+    } catch (error) {
+      failedUsers.push({
+        email: userData.email,
+        reason: error.message,
+      });
+    }
+  }
+
+  res.status(201).json({
+    success: true,
+    createdCount: createdUsers.length,
+    failedCount: failedUsers.length,
+    createdUsers,
+    failedUsers,
+  });
+});
+
 export {
   initiateRegistration,
-  createUser,
+  register,
   loginUser,
   refreshAccessToken,
   logoutCurrentUser,
@@ -542,7 +613,8 @@ export {
   getAllUsers,
   getUserById,
   updateUserById,
-  deleteUserById
+  deleteUserById,
+  createTestUsers
 };
 
 
