@@ -337,12 +337,11 @@ const updateCurrentUserProfile = asyncHandler(async (req, res) => {
     throw new Error("User not found");
   }
 
-  const { username, password, email } = req.body;
+  const { username, password } = req.body;
   user.username = username.trim() || user.username;
-  user.email = email || user.email;
 
   if (password) {
-    user.password = password;
+    user.password = password; // Will be hashed by pre-save hook
   }
 
   const updatedUser = await user.save();
@@ -486,7 +485,6 @@ const updateUserById = asyncHandler(async (req, res) => {
   }
 
   user.username = req.body.username || user.username;
-  user.email = req.body.email || user.email;
   const updatedUser = await user.save();
 
   res.json({
