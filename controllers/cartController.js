@@ -137,6 +137,7 @@ const addToCart = asyncHandler(async (req, res) => {
 
 const removeFromCart = asyncHandler(async (req, res) => {
   const { id: productId } = req.params;   
+  console.log("Prod ID", productId)
   const { size } = req.body;              
 
   if (!productId) {
