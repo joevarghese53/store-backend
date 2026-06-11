@@ -139,8 +139,12 @@ const removeFromCart = asyncHandler(async (req, res) => {
   const { id: productId } = req.params;   
   const { size } = req.body;              
 
-  if (!productId || !size) {
-    return res.status(400).json({ message: "Product ID and size are required" });
+  if (!productId) {
+    return res.status(400).json({ message: "Product ID is required" });
+  }
+
+  if (!size) {
+    return res.status(400).json({ message: "Size is required" });
   }
 
   const cart = await Cart.findOne({ userId: req.user._id });
