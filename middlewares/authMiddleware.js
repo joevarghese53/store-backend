@@ -13,8 +13,9 @@ const authenticate = asyncHandler(async (req, res, next) => {
   }
 
   if (!token) {
-    res.status(401);
-    throw new Error("Not authorized, no token");
+    return res.status(401).json({
+      message: "Not authorized",
+    });
   }
 
   // 2) Verify token
@@ -38,8 +39,9 @@ const authenticate = asyncHandler(async (req, res, next) => {
 
     next();
   } catch (err) {
-    res.status(401);
-    throw new Error("Not authorized, token failed");
+    return res.status(401).json({
+      message: "Not authorized",
+    });
   }
 });
 
