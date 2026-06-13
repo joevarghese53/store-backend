@@ -6,12 +6,12 @@ const customProductSchema = mongoose.Schema(
     {
         userId: { type: ObjectId, ref: 'User', required: true }, // Reference to the User model
         name: { type: String, required: true },
-        frontImage: { type: String, required: true },
-        backImage: { type: String, required: true },
-        frontDesign: { type: String, required: true },
-        backDesign: { type: String, required: true },
-        frontUpload: { type: String, required: true },
-        backUpload: { type: String, required: true },
+        frontImage: { type: String },
+        backImage: { type: String },
+        frontDesign: { type: String },
+        backDesign: { type: String },
+        frontUpload: { type: String },
+        backUpload: { type: String },
         category: { type: ObjectId, ref: "Category", required: true }, // Category defined by the user
         description: { type: String, required: true },
         price: { type: Number, required: true, min: 0 },
