@@ -78,7 +78,7 @@ const createOrder = asyncHandler(async (req, res) => {
   // Fetch custom products from DB
   const customProductDoc = await cProduct.findOne({ userId: req.user._id });
   const customItemsFromDB = customProductDoc
-    ? customProductDoc.customProducts.filter((customProd) =>
+    ? customProductDoc.filter((customProd) =>
       customProductItems.some(
         (item) => customProd._id.toString() === item._id
       )

@@ -1,27 +1,44 @@
 // controllers/wishlistController.js
 import Wishlist from "../models/wishlistModel.js";
 import asyncHandler from "../middlewares/asyncHandler.js";
+import Product from "../models/productModel.js";
 
 // @desc    Get current user's wishlist
 // @route   GET /api/wishlist
 // @access  Private
 const getWishlist = asyncHandler(async (req, res) => {
-  const wishlist = await Wishlist.findOne({ userId: req.user._id })
-    .populate({
-      path: "items",
-      populate: { path: "category" },
-    });
+  const wishlistDoc = await Wishlist.findOne({
+    userId: req.user._id,
+  }).populate({
+    path: "items",
+    populate: { path: "category" },
+  });
 
-  if (!wishlist) {
+  if (!wishlistDoc) {
     return res.json({
       userId: req.user._id,
       items: [],
     });
   }
 
-  res.json(wishlist);
-});
+  const validItems = wishlistDoc.items.filter(Boolean);
 
+  if (validItems.length !== wishlistDoc.items.length) {
+    await Wishlist.updateOne(
+      { _id: wishlistDoc._id },
+      {
+        $set: {
+          items: validItems.map(item => item._id),
+        },
+      }
+    );
+  }
+
+  return res.json({
+    ...wishlistDoc.toObject(),
+    items: validItems,
+  });
+});
 
 // @desc    Add product to wishlist
 // @route   POST /api/wishlist
@@ -34,15 +51,24 @@ const addToWishlist = asyncHandler(async (req, res) => {
     throw new Error("Product ID is required");
   }
 
+  const product = await Product.findById(productId);
+
+  if (!product) {
+    return res.status(404).json({
+      message: "Product not found",
+    });
+  }
+
   const wishlist = await Wishlist.findOneAndUpdate(
     { userId: req.user._id },
     {
+      $setOnInsert: { userId: req.user._id },
       $addToSet: { items: productId },
     },
     { new: true, upsert: true }
   );
 
-  res.status(201).json(wishlist);
+  return res.status(201).json(wishlist);
 });
 
 
@@ -63,7 +89,7 @@ const removeFromWishlist = asyncHandler(async (req, res) => {
     throw new Error("Wishlist not found");
   }
 
-  res.json(wishlist);
+  return res.json(wishlist);
 });
 
 
@@ -78,7 +104,7 @@ const checkItemInWishlist = asyncHandler(async (req, res) => {
     items: productId,
   });
 
-  res.json({ exists: Boolean(exists) });
+  return res.json({ exists: Boolean(exists) });
 });
 
 // @desc    Remove a product from all users' wishlists (admin)
@@ -87,14 +113,16 @@ const checkItemInWishlist = asyncHandler(async (req, res) => {
 const removeFromAllWishlist = asyncHandler(async (req, res) => {
   const { productId } = req.params;
 
-  console.log("Removing product from all wishlists:", productId);
+  if (process.env.NODE_ENV === "development") {
+    console.log("Removing product from all wishlists:", productId);
+  }
 
   await Wishlist.updateMany(
     {},
     { $pull: { items: productId } }
   );
 
-  res.json({ success: true });
+  return res.json({ success: true });
 });
 
 

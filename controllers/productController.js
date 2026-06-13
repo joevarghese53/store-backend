@@ -1,6 +1,8 @@
 // productController.js
 import asyncHandler from "../middlewares/asyncHandler.js";
 import Product from "../models/productModel.js";
+import Cart from "../models/cartModel.js";
+import Wishlist from "../models/wishlistModel.js";
 import { S3Client, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import dotenv from "dotenv";
 
@@ -99,46 +101,46 @@ const updateProductDetails = asyncHandler(async (req, res) => {
     throw new Error("Product not found");
   }
 
-  if(name){
+  if (name) {
     product.name = name
   }
-  if(description){
+  if (description) {
     product.description = description
   }
-  if(price){
+  if (price) {
     product.price = price
   }
-  if(category){
+  if (category) {
     product.category = category
   }
-  if(countInStock){
+  if (countInStock) {
     product.countInStock = countInStock
   }
-  if(offers){
+  if (offers) {
     product.offers = offers
   }
-  if(returnPolicy){
+  if (returnPolicy) {
     product.returnPolicy = returnPolicy
   }
-  if(frontImage){
+  if (frontImage) {
     product.frontImage = frontImage
   }
-  if(backImage){
+  if (backImage) {
     product.backImage = backImage
   }
-  if(frontDesign){
+  if (frontDesign) {
     product.frontDesign = frontDesign
   }
-  if(backDesign){
+  if (backDesign) {
     product.backDesign = backDesign
   }
-  if(frontUpload){
+  if (frontUpload) {
     product.frontUpload = frontUpload
   }
-  if(backUpload){
+  if (backUpload) {
     product.backUpload = backUpload
   }
-  if(imagesArray.length > 0){
+  if (imagesArray.length > 0) {
     product.images = imagesArray
   }
 
@@ -156,6 +158,20 @@ const removeProduct = asyncHandler(async (req, res) => {
     res.status(404);
     throw new Error("Product not found");
   }
+
+  await Cart.updateMany(
+  { "items.productId": product._id },
+  {
+    $pull: {
+      items: { productId: product._id },
+    },
+  }
+);
+
+  await Wishlist.updateMany(
+    {},
+    { $pull: { items: product._id } }
+  );
 
   const imageUrls = [
     product.frontImage,

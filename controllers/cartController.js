@@ -13,7 +13,7 @@ const getCart = asyncHandler(async (req, res) => {
 
   const cProductDoc = await cProduct
     .findOne({ userId: req.user._id })
-    .populate("customProducts.category", "name");
+    .populate("category", "name");
 
   const populatedItems = await Promise.all(
     cart.items.map(async (item) => {
@@ -40,7 +40,7 @@ const getCart = asyncHandler(async (req, res) => {
       }
 
       if (item.productType === "cProduct" && cProductDoc) {
-        const customProduct = cProductDoc.customProducts.id(item.productId);
+        const customProduct = cProductDoc.id(item.productId);
 
         if (!customProduct) {
           return {
@@ -100,7 +100,7 @@ const addToCart = asyncHandler(async (req, res) => {
     const cProductDoc = await cProduct.findOne({ userId: req.user._id });
 
     if (cProductDoc) {
-      product = cProductDoc.customProducts.id(productId);
+      product = cProductDoc.id(productId);
     }
   }
 
