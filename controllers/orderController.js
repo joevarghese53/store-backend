@@ -76,14 +76,12 @@ const createOrder = asyncHandler(async (req, res) => {
   });
 
   // Fetch custom products from DB
-  const customProductDoc = await cProduct.findOne({ userId: req.user._id });
-  const customItemsFromDB = customProductDoc
-    ? customProductDoc.filter((customProd) =>
-      customProductItems.some(
-        (item) => customProd._id.toString() === item._id
-      )
-    )
-    : [];
+  const customItemsFromDB = await cProduct.find({
+    _id: {
+      $in: customProductItems.map((item) => item._id),
+    },
+    userId: req.user._id,
+  });
 
   const dbOrderItems = orderItems.map((itemFromClient) => {
     let matchingItemFromDB;

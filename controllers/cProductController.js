@@ -1,5 +1,6 @@
 // controllers/cProductController.js
 import cProduct from "../models/cProductModel.js";
+import Cart from "../models/cartModel.js";
 import asyncHandler from "../middlewares/asyncHandler.js";
 import { S3Client, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import dotenv from "dotenv";
@@ -97,6 +98,22 @@ const deleteCProduct = asyncHandler(async (req, res) => {
   });
 
   await Promise.all(deletePromises);
+
+  // Remove product from all carts
+  await Cart.updateMany(
+    {
+      "items.productId": product._id,
+      "items.productType": "cProduct",
+    },
+    {
+      $pull: {
+        items: {
+          productId: product._id,
+          productType: "cProduct",
+        },
+      },
+    }
+  );
 
   await product.deleteOne();
 

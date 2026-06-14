@@ -69,22 +69,22 @@ const phonepeWebhook = asyncHandler(async (req, res) => {
                     await applyPurchasedTries(txn.userId, txn.triesToPurchase);
                     break;
 
-                    case "PRODUCT_PURCHASE":
-                        const orderId = merchantOrderId.split("_")[1];
-                        const paymentDetails = payload.paymentDetails[0]
-                        const paymentData = {
-                          transactionId: paymentDetails.transactionId,
-                          state: paymentDetails.state,
-                          paymentMode: paymentDetails.paymentMode,
-                          amount: paymentDetails.amount
-                        }
-                        console.log("Marking order as paid for Order ID:", orderId, paymentData);
-                        await markOrderAsPaid(orderId, paymentData);
-                        break;
+                case "PRODUCT_PURCHASE":
+                    const orderId = merchantOrderId.split("_")[1];
+                    const paymentDetails = payload.paymentDetails[0]
+                    const paymentData = {
+                        transactionId: paymentDetails.transactionId,
+                        state: paymentDetails.state,
+                        paymentMode: paymentDetails.paymentMode,
+                        amount: Number((paymentDetails.amount / 100).toFixed(2))
+                    }
+                    console.log("Marking order as paid for Order ID:", orderId, paymentData);
+                    await markOrderAsPaid(orderId, paymentData);
+                    break;
             }
         }
 
-        return 
+        return
     } catch (error) {
         console.error("❌ PhonePe webhook error", error);
         return
