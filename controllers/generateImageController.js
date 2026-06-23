@@ -1,128 +1,142 @@
-//generateImageController.js
-import { addToQueue, getQueuePosition, startQueueProcessor } from "../utils/jobQueue.js";
-import { v4 as uuidv4 } from "uuid";
-
-const jobStatusMap = new Map(); // In-memory storage (for now)
+import client from "../config/openAiClient.js";
+import fs from "fs";
+import path from "path";
+import sharp from "sharp";
+import { buildPrompt, makeTransparent } from "../utils/imageHandler.js";
 
 const generateImage = async (req, res) => {
-  const jobId = uuidv4();
-  const payload = req.body;
+  try {
+    const {
+      prompt,
+      color,
+      coords,
+      category,
+      side,
+      device,
+    } = req.body;
 
-  jobStatusMap.set(jobId, { status: "IN_QUEUE" });
+    console.log("Received request with body:", req.body);
+    const enhancedPrompt = buildPrompt(
+      prompt,
+      color
+    );
 
-  addToQueue({ id: jobId, payload });
+    const result = await client.images.generate({
+      model: "gpt-image-2",
+      prompt: enhancedPrompt,
+      size: "1024x1536"
+    });
 
-  const position = getQueuePosition(jobId);
+    const imageBuffer = Buffer.from(
+      result.data[0].b64_json,
+      "base64"
+    );
 
-  res.status(202).json({
-    success: true,
-    jobId,
-    position,
-    message: "Job queued. Poll this job ID to get the result.",
-  });
+    const designPath = path.join(
+      process.cwd(),
+      "temp",
+      "design.png"
+    );
 
-  startQueueProcessor(async (job) => {
-    const { id, payload } = job;
+    const transparentPath = path.join(
+      process.cwd(),
+      "temp",
+      "transparent.png"
+    );
 
-    try {
-      jobStatusMap.set(id, { status: "PROCESSING" });
+    const resizedPath = path.join(
+      process.cwd(),
+      "temp",
+      "resized.png"
+    );
 
-      const submitRes = await fetch(process.env.RUNPOD_API_URL + "/run", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.RUNPOD_API_KEY}`,
-        },
-        body: JSON.stringify({ input: payload }),
-      });
+    const finalPath = path.join(
+      process.cwd(),
+      "temp",
+      "final.png"
+    );
 
-      const submitData = await submitRes.json();
-      const runpodJobId = submitData.id;
+    fs.mkdirSync(
+      path.join(process.cwd(), "temp"),
+      { recursive: true }
+    );
 
-      const pollUntilDone = async () => {
-        while (true) {
-          const statusRes = await fetch(`${process.env.RUNPOD_API_URL}/status/${runpodJobId}`, {
-            headers: {
-              Authorization: `Bearer ${process.env.RUNPOD_API_KEY}`,
-            },
-          });
+    fs.writeFileSync(designPath, imageBuffer);
 
-          const statusData = await statusRes.json();
+    await makeTransparent(
+      designPath,
+      transparentPath,
+      color
+    );
 
-          if (statusData.status === "COMPLETED") return statusData.output;
-          if (statusData.status === "FAILED") throw new Error("RunPod job failed.");
+    const printWidth = coords[2] - coords[0];
+    const printHeight = coords[3] - coords[1];
 
-          await new Promise((resolve) => setTimeout(resolve, 3000));
+    await sharp(transparentPath)
+      .resize({
+        width: Math.round(printWidth),
+        height: Math.round(printHeight),
+        fit: "inside"
+      })
+      .png()
+      .toFile(resizedPath);
+
+    const resizedMeta = await sharp(resizedPath).metadata();
+
+    const shirtPath = path.join(
+      process.cwd(),
+      "assets/tshirts",
+      `${color}_tshirt_${category}_${side}_${device}.png`
+    );
+
+    const x =
+      coords[0] +
+      (printWidth - resizedMeta.width) / 2;
+
+    const y =
+      coords[1] +
+      (printHeight - resizedMeta.height) / 2;
+
+    await sharp(shirtPath)
+      .composite([
+        {
+          input: resizedPath,
+          left: Math.round(x),
+          top: Math.round(y)
         }
-      };
+      ])
+      .png()
+      .toFile(finalPath);
 
-      const output = await pollUntilDone();
+    const finalBase64 = fs.readFileSync(finalPath, {
+      encoding: "base64"
+    });
 
-      jobStatusMap.set(id, {
-        status: "COMPLETED",
-        output,
-      });
-
-    } catch (err) {
-      console.error("Job Failed:", err.message);
-      jobStatusMap.set(id, {
-        status: "FAILED",
-        error: err.message,
-      });
-    }
-  });
-};
-
-const getJobStatus = (req, res) => {
-  const jobId = req.params.id;
-
-  if (!jobStatusMap.has(jobId)) {
-    return res.status(404).json({ success: false, message: "Job not found." });
-  }
-
-  const jobInfo = jobStatusMap.get(jobId);
-
-  if (jobInfo.status === "COMPLETED") {
-    return res.status(200).json({
+    const designBase64 = fs.readFileSync(
+      transparentPath,
+      {
+        encoding: "base64"
+      }
+    );
+    console.log("Final image generated successfully.");
+    res.status(200).json({
       success: true,
-      status: "COMPLETED",
-      finalImage: jobInfo.output.final_image,
-      overlayImage: jobInfo.output.overlay_image,
+      design:
+        `data:image/png;base64,${designBase64}`,
+      mockup:
+        `data:image/png;base64,${finalBase64}`
     });
-  }
 
-  if (jobInfo.status === "FAILED") {
-    return res.status(200).json({
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
       success: false,
-      status: "FAILED",
-      error: jobInfo.error,
+      message: error.message
     });
   }
-
-  res.status(200).json({
-    success: true,
-    status: jobInfo.status,
-  });
 };
 
-const getQueuePositionOfJob = (req, res) => {
-  const jobId = req.params.id;
-
-  if (!jobStatusMap.has(jobId)) {
-    return res.status(404).json({ success: false, message: "Job not found." });
-  }
-
-  const position = getQueuePosition(jobId);
-
-  if (position === null) {
-    return res.status(404).json({ success: false, message: "Job not found in queue." });
-  }
-
-  res.status(200).json({
-    success: true,
-    position,
-  });
-} 
-
-
-export { generateImage, getJobStatus, getQueuePositionOfJob };
+export {
+  generateImage
+};

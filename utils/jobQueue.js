@@ -1,4 +1,3 @@
-//jobQueue.js
 let queue = [];
 let isProcessing = false;
 
@@ -13,17 +12,27 @@ export const getQueuePosition = (jobId) => {
 
 export const startQueueProcessor = async (processFn) => {
   if (isProcessing) return;
+
   isProcessing = true;
 
-  while (queue.length > 0) {
-    const job = queue[0]; // don't shift yet
-    try {
-      await processFn(job);
-    } catch (err) {
-      console.error("Processing error:", err.message);
-    }
-    queue.shift(); // remove job only after it's fully processed
-  }
+  try {
+    while (queue.length > 0) {
+      const job = queue[0];
 
-  isProcessing = false;
+      try {
+        await processFn(job);
+      } catch (err) {
+        console.error("Processing error:", err.message);
+      }
+
+      queue.shift();
+    }
+  } finally {
+    isProcessing = false;
+
+    // Handle jobs added while processor was shutting down
+    if (queue.length > 0) {
+      void startQueueProcessor(processFn);
+    }
+  }
 };
