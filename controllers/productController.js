@@ -386,6 +386,9 @@ const filterProducts = asyncHandler(async (req, res) => {
   res.json(products);
 });
 
+// @desc    Upload images for product
+// @route   POST /api/products/admin/upload-images
+// @access  Admin
 const uploadImages = async (req, res) => {
   if (!req.files || Object.keys(req.files).length === 0) {
     return res.status(400).json({ message: "No image files provided" });

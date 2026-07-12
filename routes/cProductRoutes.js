@@ -4,9 +4,10 @@ const router = express.Router();
 import formidable from "express-formidable";
 import { addToCProducts, getCProducts, deleteCProduct, fetchCProductById } from "../controllers/cProductController.js";
 import { authenticate } from "../middlewares/authMiddleware.js";
+import { uploadFields } from "../utils/multer.js";
 
 router.route("/")
-    .post(authenticate, formidable(), addToCProducts)
+    .post(authenticate, uploadFields, addToCProducts)
     .get(authenticate, getCProducts);
 router.route("/:productId")
     .delete(authenticate, deleteCProduct)

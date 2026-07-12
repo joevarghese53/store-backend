@@ -1,9 +1,14 @@
 // controllers/cProductController.js
 import cProduct from "../models/cProductModel.js";
 import Cart from "../models/cartModel.js";
+import Category from "../models/categoryModel.js";
 import asyncHandler from "../middlewares/asyncHandler.js";
 import { S3Client, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { uploadToR2 } from "../services/r2Service.js";
+import { C_PRODUCT_CONFIG } from "../config/cProductConfig.js";
+import { categoryMap } from "../config/categoryMap.js";
 import dotenv from "dotenv";
+
 
 dotenv.config();
 
@@ -19,35 +24,98 @@ const s3 = new S3Client({
 
 const BUCKET_NAME = process.env.CLOUDFLARE_BUCKET_NAME;
 
+export const calculateProductPrice = (
+  category,
+  hasFrontDesign,
+  hasBackDesign
+) => {
+  const config = C_PRODUCT_CONFIG[category];
+
+  if (!config) {
+    throw new Error("Invalid category");
+  }
+
+  let price = config.basePrice;
+
+  if (hasFrontDesign) {
+    price += config.designPrice;
+  }
+
+  if (hasBackDesign) {
+    price += config.designPrice;
+  }
+
+  return price;
+};
+
 // @desc Add a new custom product for the current user
 const addToCProducts = asyncHandler(async (req, res) => {
-  if (!req.fields.name) {
-    return res.status(400).json({ message: "Name is required" });
+  const {
+    prompt,
+    category,
+  } = req.body;
+
+  // Upload Images
+  if (!req.files?.frontImage && !req.files?.backImage) {
+    return res.status(400).json({
+      message: "At least one design is required.",
+    });
+  }
+  const [
+    frontImage,
+    backImage,
+    frontDesign,
+    backDesign,
+  ] = await Promise.all([
+    req.files?.frontImage?.[0]
+      ? uploadToR2(req.files.frontImage[0])
+      : Promise.resolve(null),
+
+    req.files?.backImage?.[0]
+      ? uploadToR2(req.files.backImage[0])
+      : Promise.resolve(null),
+
+    req.files?.frontDesign?.[0]
+      ? uploadToR2(req.files.frontDesign[0])
+      : Promise.resolve(null),
+
+    req.files?.backDesign?.[0]
+      ? uploadToR2(req.files.backDesign[0])
+      : Promise.resolve(null),
+  ]);
+
+  // Calculate Price and find category ID
+  const config = C_PRODUCT_CONFIG[category];
+  const hasFrontDesign = !!frontDesign;
+  const hasBackDesign = !!backDesign;
+  const price = calculateProductPrice(
+    category,
+    hasFrontDesign,
+    hasBackDesign
+  );
+  const categoryDoc = await Category.findOne({ slug: category });
+  if (!categoryDoc) {
+    console.error("Category not found:", categoryMap[category]);
+    return res.status(400).json({
+      message: "Invalid category",
+    });
   }
 
-  if (!req.fields.category) {
-    return res.status(400).json({ message: "Category is required" });
-  }
-
-  if (!req.fields.price || isNaN(Number(req.fields.price))) {
-    return res.status(400).json({ message: "Valid price is required" });
-  }
   const product = await cProduct.create({
     userId: req.user._id,
-    name: req.fields.name,
-    description: req.fields.description,
-    price: Number(req.fields.price),
-    category: req.fields.category,
-    offers: req.fields.offers,
-    returnPolicy: req.fields.returnPolicy,
-    frontImage: req.fields.frontImage || "",
-    backImage: req.fields.backImage || "",
-    frontDesign: req.fields.frontDesign || "",
-    backDesign: req.fields.backDesign || "",
-    frontUpload: req.fields.frontUpload || "",
-    backUpload: req.fields.backUpload || "",
+    name: "FlowState Customs" + prompt.slice(0, 10) + "...",
+    description: config.description,
+    price: Number(price),
+    category: categoryDoc._id,
+    offers: config.offers,
+    returnPolicy: config.returnPolicy,
+    frontImage,
+    backImage,
+    frontDesign,
+    backDesign,
   });
 
+  console.log("New custom product created:", product);
   res.status(201).json(product);
 });
 

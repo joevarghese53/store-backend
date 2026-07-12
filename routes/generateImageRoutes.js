@@ -7,6 +7,6 @@ import { rateLimiters } from "../utils/rateLimiters.js";
 
 const router = express.Router();
 
-router.post("/", rateLimiters.generateLimiter, generateImage);
+router.post("/", rateLimiters.generateLimiter, authenticate, generateImage);
 
 export default router;
