@@ -53,6 +53,7 @@ const addToCProducts = asyncHandler(async (req, res) => {
   const {
     prompt,
     category,
+    color,
   } = req.body;
 
   // Upload Images
@@ -109,6 +110,7 @@ const addToCProducts = asyncHandler(async (req, res) => {
     category: categoryDoc._id,
     offers: config.offers,
     returnPolicy: config.returnPolicy,
+    color: color,
     frontImage,
     backImage,
     frontDesign,
@@ -123,7 +125,7 @@ const addToCProducts = asyncHandler(async (req, res) => {
 const getCProducts = asyncHandler(async (req, res) => {
   const products = await cProduct
     .find({ userId: req.user._id })
-    .populate("category", "name")
+    .populate("category", "name slug")
     .sort({ createdAt: -1 });
 
   res.status(200).json(products);
@@ -195,8 +197,8 @@ const fetchCProductById = asyncHandler(async (req, res) => {
       _id: req.params.productId,
       userId: req.user._id,
     })
-    .populate("category", "name");
-
+    .populate("category", "name slug");
+    
   if (!product) {
     return res.status(404).json({
       message: "Product not found",

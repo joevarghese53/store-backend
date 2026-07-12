@@ -12,6 +12,7 @@ const customProductSchema = mongoose.Schema(
         backDesign: { type: String },
         frontUpload: { type: String },
         backUpload: { type: String },
+        color: { type: String, required: true },
         category: { type: ObjectId, ref: "Category", required: true }, // Category defined by the user
         description: { type: String, required: true },
         price: { type: Number, required: true, min: 0 },
