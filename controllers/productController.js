@@ -35,7 +35,7 @@ const parseImagesField = (images) => {
 // @route   POST /api/products
 // @access  Admin
 const addProduct = asyncHandler(async (req, res) => {
-  const { name, description, price, category, countInStock, offers, returnPolicy } =
+  const { name, description, price, category, offers, returnPolicy } =
     req.fields;
 
   const imagesArray = parseImagesField(req.fields.images);
@@ -53,9 +53,6 @@ const addProduct = asyncHandler(async (req, res) => {
     case !category:
       res.status(400);
       throw new Error("Category is required");
-    case !countInStock:
-      res.status(400);
-      throw new Error("Count in stock is required");
     case !offers:
       res.status(400);
       throw new Error("Offers is required");
@@ -69,7 +66,6 @@ const addProduct = asyncHandler(async (req, res) => {
     description,
     price,
     category,
-    countInStock,
     offers,
     returnPolicy,
     frontImage: req.fields.frontImage,
@@ -89,7 +85,7 @@ const addProduct = asyncHandler(async (req, res) => {
 // @route   PUT /api/products/:id
 // @access  Admin
 const updateProductDetails = asyncHandler(async (req, res) => {
-  const { name, description, price, category, countInStock, offers, returnPolicy, frontImage, backImage, frontDesign, backDesign, frontUpload, backUpload } =
+  const { name, description, price, category, offers, returnPolicy, frontImage, backImage, frontDesign, backDesign, frontUpload, backUpload } =
     req.fields;
 
   const imagesArray = parseImagesField(req.fields.images);
@@ -112,9 +108,6 @@ const updateProductDetails = asyncHandler(async (req, res) => {
   }
   if (category) {
     product.category = category
-  }
-  if (countInStock) {
-    product.countInStock = countInStock
   }
   if (offers) {
     product.offers = offers
