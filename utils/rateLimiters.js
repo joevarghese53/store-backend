@@ -28,6 +28,7 @@ export const rateLimiters = {
   purchaseTriesLimiter: createPlaceholder("purchaseTriesLimiter"),
   initiateRegistrationLimiter: createPlaceholder("initiateRegistrationLimiter"),
   refreshLimiter: createPlaceholder("refreshLimiter"),
+  contactLimiter: createPlaceholder("contactLimiter"),
 };
 
 export const initRateLimiters = () => {
@@ -86,6 +87,14 @@ export const initRateLimiters = () => {
 
   rateLimiters.refreshLimiter.set(
     createRateLimiter({ windowMs: 60 * 1000, max: 10 })
+  );
+
+  rateLimiters.contactLimiter.set(
+    createRateLimiter({
+      windowMs: 15 * 60 * 1000,
+      max: 5,
+      message: "Too many contact requests. Please try again later.",
+    })
   );
 
   console.log("✅ Rate limiters initialized");

@@ -23,6 +23,7 @@ import generateImageRoutes from "./routes/generateImageRoutes.js";
 import emailOtpRoutes from "./routes/emailOtpRoutes.js";
 import phonepeWebhookRoutes from "./routes/phonepeWebhookRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
+import contactRoutes from "./routes/contactRoutes.js";
 
 import { errorHandler, notFound } from './middlewares/errorHandler.js';
 import corsOptions from "./config/corsOptions.js";
@@ -55,6 +56,7 @@ app.use("/api/generate-image", generateImageRoutes);
 app.use("/api/email-otp", emailOtpRoutes);
 app.use("/api/phonepe-webhook", phonepeWebhookRoutes);
 app.use("/api/payment", paymentRoutes);
+app.use("/api/contact", contactRoutes);
 app.use("/api/health", (req, res) => {
   res.send("Server is running");
 });
