@@ -205,6 +205,20 @@ const getAllOrders = asyncHandler(async (req, res) => {
   res.json(orders);
 });
 
+const deleteOrder = asyncHandler(async (req, res) => {
+  const order = await Order.findByIdAndDelete(req.params.id);
+
+  if (!order) {
+    res.status(404);
+    throw new Error("Order not found");
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "Order deleted",
+  });
+});
+
 const countTotalOrdersByDate = asyncHandler(async (req, res) => {
   const ordersByDate = await Order.aggregate([
     { $match: { isPaid: true } },
@@ -452,6 +466,7 @@ const sendOrderOutForDeliveryEmail = async (order) => {
 export {
   createOrder,
   getAllOrders,
+  deleteOrder,
   getUserOrders,
   countTotalOrdersByDate,
   calculateTotalSales,

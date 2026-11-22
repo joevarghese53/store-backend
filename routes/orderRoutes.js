@@ -3,6 +3,7 @@ import express from "express";
 import {
   createOrder,
   getAllOrders,
+  deleteOrder,
   getUserOrders,
   countTotalOrdersByDate,
   calculateTotalSales,
@@ -18,6 +19,7 @@ import {
 } from "../controllers/orderController.js";
 import { authenticate, authorizeAdmin } from "../middlewares/authMiddleware.js";
 import { rateLimiters } from "../utils/rateLimiters.js";
+import checkId from "../middlewares/checkId.js";
 
 const router = express.Router();
 
@@ -32,6 +34,7 @@ router.route("/:id/delivered").put(authenticate, authorizeAdmin, markOrderAsDeli
 
 // Admin route to get all orders
 router.route("/admin/all").get(authenticate, authorizeAdmin, getAllOrders);
+router.route("/admin/:id").delete(authenticate, authorizeAdmin, checkId, deleteOrder);
 router.route("/admin/total-orders").get(authenticate, authorizeAdmin, countTotalOrdersByDate);
 router.route("/admin/total-sales").get(authenticate, authorizeAdmin, calculateTotalSales);
 router.route("/admin/total-sales-by-date").get(authenticate, authorizeAdmin, calculateTotalSalesByDate);
