@@ -8,7 +8,6 @@ const categorySchema = new mongoose.Schema(
       required: true,
       maxLength: 32,
       unique: true,
-      lowercase: true
     },
     // Slug for URL-friendly category names
     slug: {
