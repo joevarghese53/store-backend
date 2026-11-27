@@ -53,6 +53,8 @@ function calcPrices(orderItems) {
 
 const createOrder = asyncHandler(async (req, res) => {
   const { orderItems, shippingAddress } = req.body;
+  const isCustomProductType = (productType) =>
+    ["customProduct", "cProduct", "CProduct"].includes(productType);
 
   if (!orderItems || orderItems.length === 0) {
     return res.status(400).json({ error: "No order items" });
@@ -66,8 +68,8 @@ const createOrder = asyncHandler(async (req, res) => {
   const productItems = orderItems.filter(
     (item) => item.productType === "Product"
   );
-  const customProductItems = orderItems.filter(
-    (item) => item.productType === "cProduct"
+  const customProductItems = orderItems.filter((item) =>
+    isCustomProductType(item.productType)
   );
 
   // Fetch normal products from DB
@@ -90,7 +92,7 @@ const createOrder = asyncHandler(async (req, res) => {
       matchingItemFromDB = itemsFromDB.find(
         (itemFromDB) => itemFromDB._id.toString() === itemFromClient._id
       );
-    } else if (itemFromClient.productType === "cProduct") {
+    } else if (isCustomProductType(itemFromClient.productType)) {
       matchingItemFromDB = customItemsFromDB.find(
         (itemFromDB) => itemFromDB._id.toString() === itemFromClient._id
       );
@@ -104,6 +106,9 @@ const createOrder = asyncHandler(async (req, res) => {
 
     return {
       ...itemFromClient,
+      productType: isCustomProductType(itemFromClient.productType)
+        ? "customProduct"
+        : itemFromClient.productType,
       product: itemFromClient._id,
       price: matchingItemFromDB.price,
       _id: undefined,

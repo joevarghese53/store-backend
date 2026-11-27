@@ -173,13 +173,13 @@ const deleteCProduct = asyncHandler(async (req, res) => {
   await Cart.updateMany(
     {
       "items.productId": product._id,
-      "items.productType": "cProduct",
+      "items.productType": { $in: ["customProduct", "cProduct", "CProduct"] },
     },
     {
       $pull: {
         items: {
           productId: product._id,
-          productType: "cProduct",
+          productType: { $in: ["customProduct", "cProduct", "CProduct"] },
         },
       },
     }

@@ -4,16 +4,15 @@ import Product from "../models/productModel.js";
 import cProduct from "../models/cProductModel.js";
 import asyncHandler from "../middlewares/asyncHandler.js";
 
+const isCustomProductType = (productType) =>
+  ["customProduct", "cProduct", "CProduct"].includes(productType);
+
 const getCart = asyncHandler(async (req, res) => {
   const cart = await Cart.findOne({ userId: req.user._id });
 
   if (!cart) {
     return res.json({ userId: req.user._id, items: [] });
   }
-
-  const cProductDoc = await cProduct
-    .findOne({ userId: req.user._id })
-    .populate("category", "name");
 
   const populatedItems = await Promise.all(
     cart.items.map(async (item) => {
@@ -39,18 +38,22 @@ const getCart = asyncHandler(async (req, res) => {
         };
       }
 
-      if (item.productType === "cProduct" && cProductDoc) {
-        const customProduct = cProductDoc.id(item.productId);
+      if (isCustomProductType(item.productType)) {
+        const customProduct = await cProduct
+          .findOne({ _id: item.productId, userId: req.user._id })
+          .populate("category", "name");
 
         if (!customProduct) {
           return {
             ...item.toObject(),
+            productType: "customProduct",
             productId: null,
           };
         }
 
         return {
           ...item.toObject(),
+          productType: "customProduct",
           productId: {
             ...customProduct.toObject(),
             category: customProduct.category?.name || null,
@@ -72,9 +75,14 @@ const getCart = asyncHandler(async (req, res) => {
 });
 
 const addToCart = asyncHandler(async (req, res) => {
-  const { productId, productType, quantity, size } = req.body;
+  const {
+    productId,
+    productType: requestedProductType,
+    quantity,
+    size,
+  } = req.body;
 
-  if (!productId || !productType || !size) {
+  if (!productId || !requestedProductType || !size) {
     return res
       .status(400)
       .json({ message: "Product ID, product type and size are required." });
@@ -88,21 +96,21 @@ const addToCart = asyncHandler(async (req, res) => {
       .json({ message: "Quantity must be a positive number." });
   }
 
-  if (!["Product", "cProduct"].includes(productType)) {
+  const productType =
+    requestedProductType === "Product"
+      ? "Product"
+      : isCustomProductType(requestedProductType)
+        ? "customProduct"
+        : null;
+
+  if (!productType) {
     return res.status(400).json({ message: "Invalid product type." });
   }
 
-  let product;
-
-  if (productType === "Product") {
-    product = await Product.findById(productId);
-  } else if (productType === "cProduct") {
-    const cProductDoc = await cProduct.findOne({ userId: req.user._id });
-
-    if (cProductDoc) {
-      product = cProductDoc.id(productId);
-    }
-  }
+  const product =
+    productType === "Product"
+      ? await Product.findById(productId)
+      : await cProduct.findOne({ _id: productId, userId: req.user._id });
 
   if (!product) {
     return res.status(404).json({ message: "Product not found." });
@@ -111,6 +119,12 @@ const addToCart = asyncHandler(async (req, res) => {
   let cart = await Cart.findOne({ userId: req.user._id });
 
   if (cart) {
+    for (const item of cart.items) {
+      if (isCustomProductType(item.productType)) {
+        item.productType = "customProduct";
+      }
+    }
+
     const itemIndex = cart.items.findIndex(
       (item) =>
         item.productId.toString() === productId &&

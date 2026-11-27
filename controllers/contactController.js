@@ -97,4 +97,36 @@ const submitContactMessage = asyncHandler(async (req, res) => {
   });
 });
 
-export { submitContactMessage };
+const getContactMessages = asyncHandler(async (req, res) => {
+  const messages = await ContactMessage.find()
+    .sort({ isCompleted: 1, createdAt: -1 })
+    .lean();
+
+  res.json(messages);
+});
+
+const updateContactMessageStatus = asyncHandler(async (req, res) => {
+  const { isCompleted } = req.body ?? {};
+
+  if (typeof isCompleted !== "boolean") {
+    res.status(400);
+    throw new Error("A valid completion status is required.");
+  }
+
+  const contactMessage = await ContactMessage.findById(req.params.id);
+  if (!contactMessage) {
+    return res.status(404).json({ message: "Contact query not found." });
+  }
+
+  contactMessage.isCompleted = isCompleted;
+  contactMessage.completedAt = isCompleted ? new Date() : null;
+  await contactMessage.save();
+
+  res.json(contactMessage);
+});
+
+export {
+  getContactMessages,
+  submitContactMessage,
+  updateContactMessageStatus,
+};

@@ -25,7 +25,7 @@ const orderSchema = mongoose.Schema(
         productType: {
           type: String,
           required: true,
-          enum: ["Product", "CustomProduct"], // or "cProduct" if that's your model name
+          enum: ["Product", "customProduct"],
         },
       },
     ],
